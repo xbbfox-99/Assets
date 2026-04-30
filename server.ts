@@ -10,22 +10,54 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  let twseCache: any[] | null = null;
+  let lastTwseFetch = 0;
+  const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
   // API Route to proxy market data and bypass CORS
   app.get("/api/prices", async (req, res) => {
     const symbolsQuery = req.query.symbols as string || "";
     const requestedSymbols = symbolsQuery.split(',').filter(Boolean).map(s => s.trim().toUpperCase());
 
     try {
-      // 1. Fetch Taiwan Stocks (TWSE)
-      const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
-      let resultData: any[] = [];
-      if (twseRes.ok) {
-        resultData = await twseRes.json();
+      const resultData: any[] = [];
+      const commonHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      };
+
+      // 1. Fetch Taiwan Stocks (TWSE) with Cache
+      const now = Date.now();
+      if (!twseCache || (now - lastTwseFetch > CACHE_DURATION)) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+          const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', { 
+            signal: controller.signal,
+            headers: commonHeaders
+          });
+          clearTimeout(timeout);
+          if (twseRes.ok) {
+            twseCache = await twseRes.json();
+            lastTwseFetch = now;
+          }
+        } catch (err) {
+          console.error('TWSE fetch error:', err);
+        }
+      }
+      
+      if (twseCache) {
+        resultData.push(...twseCache);
       }
 
       // 2. Fetch Bitcoin (BTC)
       try {
-        const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+        const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', { 
+          signal: controller.signal,
+          headers: commonHeaders 
+        });
+        clearTimeout(timeout);
         if (btcRes.ok) {
           const btcData: any = await btcRes.json();
           const btcPrice = btcData.price;
@@ -38,24 +70,25 @@ async function startServer() {
       }
 
       // 3. Fetch US Stocks or specific symbols that aren't in TWSE
-      // We look for symbols that look like US stocks or were explicitly requested
       const usSymbols = requestedSymbols.filter(s => 
         !resultData.find(t => t.Code === s) && 
         !['BTC', 'BTC-USD', 'BITCOIN'].includes(s)
       );
 
-      // Simple heuristic: if it has letters and wasn't found in TWSE, it might be US Stock
-      // Also check some common ones if they were in the template but not requested
-      const commonUS = ['GOOGL', 'AAPL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
+      const commonUS = ['GOOGL', 'AAPL', 'MSFT', 'TSLA', 'AMZN', 'NVDA', '2002'];
       const toFetch = Array.from(new Set([...usSymbols, ...commonUS.filter(s => requestedSymbols.includes(s) || !requestedSymbols.length)]));
 
-      // Limit concurrent fetches to avoid being blocked
       const limitedFetches = toFetch.slice(0, 15);
 
       const usPromises = limitedFetches.map(async (s) => {
         try {
-          // Yahoo Finance via chart endpoint
-          const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+          const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`, { 
+            signal: controller.signal,
+            headers: commonHeaders 
+          });
+          clearTimeout(timeout);
           if (response.ok) {
             const chart: any = await response.json();
             const price = chart.chart.result?.[0]?.meta?.regularMarketPrice;

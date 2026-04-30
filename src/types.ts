@@ -35,6 +35,8 @@ export interface Investment {
   shares: number;
   avgCost: number;
   marketPrice: number;
+  currency?: string;
+  exchangeRate?: number;
   updatedAt: any;
   type?: 'investment';
 }

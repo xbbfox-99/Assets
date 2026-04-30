@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Asset, Liability, Investment, Reminder } from '../types';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Wallet, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Clock, Check, Square } from 'lucide-react';
 
 interface DashboardProps {
   assets: Asset[];
@@ -11,9 +11,21 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, investments, reminders }) => {
+  const [includeCSC, setIncludeCSC] = useState(true);
+
   // Helper to filter for the latest entries
   const getLatestSnapshot = () => {
-    const allItems = [...assets, ...liabilities, ...investments];
+    let allItems = [...assets, ...liabilities, ...investments];
+    
+    // Filter out CSC if toggled off
+    if (!includeCSC) {
+      allItems = allItems.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const bank = (item as any).bank || '';
+        return !name.includes('中鋼') && !bank.includes('中鋼');
+      });
+    }
+
     if (allItems.length === 0) return { latestAssets: [], latestLiabilities: [], latestInvestments: [], latestDate: null };
 
     const maxTimestampLookup = allItems.map(item => ({
@@ -33,10 +45,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
       return ts === maxTimestamp;
     };
 
+    const filteredAssets = assets.filter(isLatest) as Asset[];
+    const filteredLiabilities = liabilities.filter(isLatest) as Liability[];
+    const filteredInvestments = investments.filter(isLatest) as Investment[];
+
+    const finalAssets = includeCSC ? filteredAssets : filteredAssets.filter(i => !(i.name.includes('中鋼') || i.bank.includes('中鋼')));
+    const finalLiabilities = includeCSC ? filteredLiabilities : filteredLiabilities.filter(i => !(i.name.includes('中鋼')));
+    const finalInvestments = includeCSC ? filteredInvestments : filteredInvestments.filter(i => !(i.name.includes('中鋼')));
+
     return {
-      latestAssets: assets.filter(isLatest) as Asset[],
-      latestLiabilities: liabilities.filter(isLatest) as Liability[],
-      latestInvestments: investments.filter(isLatest) as Investment[],
+      latestAssets: finalAssets,
+      latestLiabilities: finalLiabilities,
+      latestInvestments: finalInvestments,
       latestDate: maxEntry.date
     };
   };
@@ -44,9 +64,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
   const { latestAssets, latestLiabilities, latestInvestments, latestDate } = getLatestSnapshot();
 
   const totalAssets = latestAssets.reduce((sum, item) => sum + (item.amount * (item.exchangeRate || 1)), 0);
-  const totalInvestments = latestInvestments.reduce((sum, item) => sum + (item.marketPrice * (item.shares || 1)), 0);
+  const totalInvestments = latestInvestments.reduce((sum, item) => sum + (item.marketPrice * (item.shares || 1) * ((item as any).exchangeRate || 1)), 0);
   const totalLiabilities = latestLiabilities.reduce((sum, item) => sum + item.amount, 0);
   const netWorth = (totalAssets + totalInvestments) - totalLiabilities;
+
+  // Available Cash: Everything except liabilities and stocks (investments) is considered cash
+  const availableCash = totalAssets;
 
   const formatCurrency = (amt: number) => {
     return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(amt);
@@ -60,25 +83,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
     ? (totalLiabilities / (totalAssets + totalInvestments)) * 100 
     : 0;
 
+  const cashRatio = (totalAssets + totalInvestments) > 0
+    ? (availableCash / (totalAssets + totalInvestments)) * 100
+    : 0;
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-end justify-between">
         <div className="space-y-1">
-          <p className="text-[10px] text-wabi-stone uppercase tracking-[0.2em]">Current Balance</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] text-wabi-stone uppercase tracking-[0.2em]">Current Balance</p>
+            {latestDate && (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-wabi-paper rounded-full border border-wabi-accent/5">
+                <Clock size={8} className="text-wabi-stone" />
+                <span className="text-[8px] font-bold text-wabi-stone uppercase tracking-widest">
+                  {(() => {
+                    const d = latestDate.toDate ? latestDate.toDate() : new Date(latestDate);
+                    return d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+                  })()}
+                </span>
+              </div>
+            )}
+          </div>
           <h2 className="text-2xl font-serif text-wabi-ink">財務概覽</h2>
         </div>
-        {latestDate && (
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-wabi-paper rounded-full border border-wabi-accent/5">
-            <Clock size={10} className="text-wabi-stone" />
-            <span className="text-[10px] font-bold text-wabi-stone uppercase tracking-widest">
-              {(() => {
-                const d = latestDate.toDate ? latestDate.toDate() : new Date(latestDate);
-                return d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
-              })()}
-            </span>
-          </div>
-        )}
+        
+        <button 
+          onClick={() => setIncludeCSC(!includeCSC)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+            includeCSC 
+              ? 'bg-wabi-accent/20 border-wabi-accent/40 text-wabi-ink' 
+              : 'bg-wabi-paper border-wabi-accent/10 text-wabi-stone'
+          }`}
+        >
+          <span className="text-[10px] font-medium tracking-wider">計入中鋼信託</span>
+          {includeCSC ? <Check size={12} strokeWidth={3} /> : <Square size={12} strokeWidth={2} />}
+        </button>
       </div>
 
       {/* Main Net Worth Card */}
@@ -87,22 +128,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
         animate={{ opacity: 1, scale: 1 }}
         className="bg-wabi-paper p-5 rounded-3xl border border-wabi-accent/10 shadow-sm space-y-4"
       >
-        <div className="space-y-0.5">
-          <p className="text-[10px] text-wabi-stone uppercase tracking-widest">Net Worth / 淨資產</p>
-          <p className="text-3xl font-serif text-wabi-ink tabular-nums">{formatCurrency(netWorth)}</p>
+        <div className="flex justify-between items-start">
+          <div className="space-y-0.5">
+            <p className="text-[10px] text-wabi-stone uppercase tracking-widest">Net Worth / 淨資產</p>
+            <p className="text-3xl font-serif text-wabi-ink tabular-nums">{formatCurrency(netWorth)}</p>
+          </div>
+          <div className="text-right space-y-0.5">
+            <p className="text-[9px] text-wabi-stone uppercase tracking-widest">Available Cash / 可用現金</p>
+            <p className="text-sm font-medium text-wabi-ink tabular-nums">{formatCurrency(availableCash)}</p>
+          </div>
         </div>
 
         <div className="pt-4 border-t border-wabi-bg flex justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-[10px] text-wabi-stone uppercase tracking-widest">
-              <TrendingUp size={10} className="text-green-600" />
+              <TrendingUp size={10} className="text-wabi-up" />
               <span>Assets</span>
             </div>
             <p className="text-sm font-medium text-wabi-ink tabular-nums">{formatCurrency(totalAssets + totalInvestments)}</p>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-[10px] text-wabi-stone uppercase tracking-widest">
-              <TrendingDown size={10} className="text-red-500" />
+              <TrendingDown size={10} className="text-wabi-down" />
               <span>Liabilities</span>
             </div>
             <p className="text-sm font-medium text-wabi-ink tabular-nums">{formatCurrency(totalLiabilities)}</p>
@@ -110,80 +157,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
         </div>
       </motion.div>
 
-      {/* Snapshot Items Debug/Detail */}
-      {(latestAssets.length > 0 || latestLiabilities.length > 0 || latestInvestments.length > 0) && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-serif text-wabi-ink px-1">當前計算項目</h3>
-          <div className="bg-wabi-paper/50 rounded-2xl border border-wabi-accent/5 divide-y divide-wabi-bg">
-            {[...latestAssets, ...latestInvestments].map((item, i) => (
-              <div key={`asset-${item.id}-${i}`} className="p-2.5 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-wabi-ink">{item.name}</p>
-                  <p className="text-[9px] text-wabi-stone uppercase tracking-widest">Asset</p>
-                </div>
-                <p className="text-xs font-bold text-emerald-600 tabular-nums">
-                  {formatCurrency(('amount' in item ? item.amount : (item.marketPrice * item.shares)) * (('exchangeRate' in item ? item.exchangeRate : 1) || 1))}
-                </p>
-              </div>
-            ))}
-            {latestLiabilities.map((item, i) => (
-              <div key={`liab-${item.id}-${i}`} className="p-2.5 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-wabi-ink">{item.name}</p>
-                  <p className="text-[9px] text-wabi-stone uppercase tracking-widest text-red-400">Liability</p>
-                </div>
-                <p className="text-xs font-bold text-red-500 tabular-nums">
-                  -{formatCurrency(item.amount)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Insights Section */}
       <div className="space-y-3">
         <h3 className="text-xs font-serif text-wabi-ink px-1">財務分析 Insights</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-wabi-paper p-3.5 rounded-2xl border border-wabi-accent/5 space-y-1.5">
-            <p className="text-[9px] text-wabi-stone uppercase tracking-wider">投資比率</p>
-            <div className="flex items-end gap-1">
-              <p className="text-base font-medium text-wabi-ink">{investmentRatio.toFixed(1)}%</p>
-            </div>
-            <div className="w-full h-1 bg-wabi-bg rounded-full overflow-hidden">
-              <div className="h-full bg-wabi-accent" style={{ width: `${Math.min(investmentRatio, 100)}%` }} />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">現金比率</p>
+            <p className="text-sm font-medium text-wabi-ink">{cashRatio.toFixed(1)}%</p>
+            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-up/80" style={{ width: `${Math.min(cashRatio, 100)}%` }} />
             </div>
           </div>
-          <div className="bg-wabi-paper p-3.5 rounded-2xl border border-wabi-accent/5 space-y-1.5">
-            <p className="text-[9px] text-wabi-stone uppercase tracking-wider">負債比率</p>
-            <div className="flex items-end gap-1">
-              <p className="text-base font-medium text-wabi-ink">{debtRatio.toFixed(1)}%</p>
-            </div>
-            <div className="w-full h-1 bg-wabi-bg rounded-full overflow-hidden">
-              <div className="h-full bg-red-200" style={{ width: `${Math.min(debtRatio, 100)}%` }} />
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">投資比率</p>
+            <p className="text-sm font-medium text-wabi-ink">{investmentRatio.toFixed(1)}%</p>
+            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-ink/40" style={{ width: `${Math.min(investmentRatio, 100)}%` }} />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Quick Sections */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-wabi-paper p-3.5 rounded-2xl border border-wabi-accent/5 space-y-2">
-          <div className="w-7 h-7 rounded-full bg-wabi-bg flex items-center justify-center text-wabi-stone">
-            <Wallet size={14} />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[9px] text-wabi-stone uppercase tracking-wider">Savings</p>
-            <p className="text-xs font-medium text-wabi-ink">{formatCurrency(totalAssets)}</p>
-          </div>
-        </div>
-        <div className="bg-wabi-paper p-3.5 rounded-2xl border border-wabi-accent/5 space-y-2">
-          <div className="w-7 h-7 rounded-full bg-wabi-bg flex items-center justify-center text-wabi-stone">
-            <Clock size={14} />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[9px] text-wabi-stone uppercase tracking-wider">Reminders</p>
-            <p className="text-xs font-medium text-wabi-ink">{reminders.length} 筆待付</p>
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">負債比率</p>
+            <p className="text-sm font-medium text-wabi-ink">{debtRatio.toFixed(1)}%</p>
+            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-down/80" style={{ width: `${Math.min(debtRatio, 100)}%` }} />
+            </div>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { EntryList } from './components/EntryList';
 import { AddEntry } from './components/AddEntry';
 import { BatchEntry } from './components/BatchEntry';
+import { AssetAnalysis } from './components/AssetAnalysis';
 import { Login } from './components/Login';
 import { AnimatePresence } from 'motion/react';
 import { User as UserIcon } from 'lucide-react';
@@ -85,7 +86,7 @@ function AppContent() {
   };
 
   const handlePlusClick = () => {
-    setAddType(activeTab === 'liabilities' ? 'liability' : (activeTab === 'investments' ? 'investment' : 'asset'));
+    setAddType(activeTab === 'liabilities' ? 'liability' : (activeTab === 'investments' || activeTab === 'analysis' ? 'investment' : 'asset'));
     setEditingItems(null);
     setShowAdd(true);
   };
@@ -108,19 +109,8 @@ function AppContent() {
             }}
           />
         );
-      case 'investments':
-        return (
-          <EntryList 
-            title="投資組合" 
-            items={investments} 
-            type="investment" 
-            onDelete={handleDelete} 
-            onEdit={(item) => {
-              setEditingItems([item]);
-              setShowAdd(true);
-            }}
-          />
-        );
+      case 'analysis':
+        return <AssetAnalysis assets={assets} liabilities={liabilities} investments={investments} />;
       case 'settings':
         return (
           <div className="space-y-12">

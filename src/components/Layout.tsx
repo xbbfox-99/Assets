@@ -53,9 +53,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         </button>
 
         <button 
-          onClick={() => setActiveTab('investments')}
-          className={`p-3 transition-colors ${activeTab === 'investments' ? 'text-wabi-ink' : 'text-wabi-stone hover:text-wabi-ink'}`}
-          id="nav-investments"
+          onClick={() => setActiveTab('analysis')}
+          className={`p-3 transition-colors ${activeTab === 'analysis' ? 'text-wabi-ink' : 'text-wabi-stone hover:text-wabi-ink'}`}
+          id="nav-analysis"
         >
           <PieChart size={24} strokeWidth={1.5} />
         </button>

@@ -5,11 +5,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Noto Serif TC", serif;
   
-  --color-wabi-bg: #F9F8F6;
-  --color-wabi-ink: #2D2D2D;
-  --color-wabi-stone: #8C8C8C;
-  --color-wabi-paper: #FFFFFF;
-  --color-wabi-accent: #A69B8F;
+  --color-wabi-bg: #0A0A0A; 
+  --color-wabi-ink: #EDEDED; 
+  --color-wabi-stone: #7A7A7A;
+  --color-wabi-paper: #121212; 
+  --color-wabi-accent: #262626;
+  --color-wabi-up: #E11D48; /* Sophisticated Red for Assets/Up */
+  --color-wabi-down: #059669; /* Sophisticated Green for Liabilities/Down */
 }
 
 @layer base {

@@ -40,40 +40,61 @@ export const EntryList: React.FC<EntryListProps> = ({ title, items, type, onDele
             <p className="text-xs text-wabi-stone font-sans">尚無資料，請點擊上方按鈕新增</p>
           </div>
         ) : (
-          items.map((item, idx) => {
-            const amount = 'amount' in item ? item.amount : (item.marketPrice * item.shares);
-            const subtext = 'bank' in item ? item.bank : ('category' in item ? item.category : '');
-            
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                onClick={() => onEdit(item)}
-                className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/5 flex items-center justify-between group cursor-pointer hover:border-wabi-accent/20 transition-all shadow-sm hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-green-50 text-green-600' : type === 'liability' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                    {type === 'asset' || type === 'investment' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          (() => {
+            const seen = new Set();
+            return items.filter(item => {
+              if (seen.has(item.id)) return false;
+              seen.add(item.id);
+              return true;
+            }).map((item, idx) => {
+              const baseAmount = 'amount' in item ? item.amount : (item.marketPrice * item.shares);
+              const exchangeRate = (item as any).exchangeRate || 1;
+              const convertedAmount = baseAmount * exchangeRate;
+              
+              let subtext = 'bank' in item ? (item as any).bank : ('category' in item ? (item as any).category : '');
+              
+              // Normalize bank names
+              if (subtext === '台新') subtext = '台新銀行';
+              
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => onEdit(item)}
+                  className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/5 flex items-center justify-between group cursor-pointer hover:border-wabi-accent/20 transition-all shadow-sm hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-green-50 text-green-600' : type === 'liability' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                      {type === 'asset' || type === 'investment' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-wabi-ink">{item.name}</p>
+                      <p className="text-[10px] text-wabi-stone uppercase tracking-wider">{subtext}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-wabi-ink">{item.name}</p>
-                    <p className="text-[10px] text-wabi-stone uppercase tracking-wider">{subtext}</p>
+                  <div className="text-right flex flex-col items-end">
+                    <p className="text-sm font-medium text-wabi-ink tabular-nums">{formatCurrency(convertedAmount)}</p>
+                    {exchangeRate !== 1 && (
+                      <p className="text-[8px] text-wabi-stone tabular-nums">
+                        {baseAmount} {(item as any).currency || 'USD'}
+                      </p>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(item.id, getPath());
+                      }}
+                      className="text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
+                    >
+                      刪除
+                    </button>
                   </div>
-                </div>
-                <div className="text-right flex flex-col items-end">
-                  <p className="text-sm font-medium text-wabi-ink tabular-nums">{formatCurrency(amount)}</p>
-                  <button 
-                    onClick={() => onDelete(item.id, getPath())}
-                    className="text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
-                  >
-                    刪除
-                  </button>
-                </div>
-              </motion.div>
-            );
-          })
+                </motion.div>
+              );
+            });
+          })()
         )}
       </div>
     </div>

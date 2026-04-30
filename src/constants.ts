@@ -12,20 +12,20 @@ export interface ProjectItem {
 export const INSTITUTIONS = [
   {
     id: 'inst-post',
-    name: '郵局',
+    name: '中華郵政',
     items: [
-      { id: 'a1', name: '郵局存款', bank: '郵局', category: 'saving', type: 'asset' },
-      { id: 'a2', name: '手上現金', bank: '郵局', category: 'liquid', type: 'asset' },
+      { id: 'a1', name: '郵局台幣', bank: '中華郵政', category: 'saving', type: 'asset' },
+      { id: 'a2', name: '郵局定存', bank: '中華郵政', category: 'saving', type: 'asset' },
     ] as ProjectItem[]
   },
   {
     id: 'inst-taishin',
     name: '台新銀行',
     items: [
-      { id: 'a3', name: '台新台幣', bank: '台新', category: 'saving', type: 'asset' },
-      { id: 'a4', name: '台新外幣', bank: '台新', category: 'saving', type: 'asset' },
-      { id: 'i1', name: '台新證卷', bank: '台新', category: 'investment', type: 'asset' },
-      { id: 'l1', name: '台新卡費', bank: '台新', category: 'card', type: 'liability' },
+      { id: 'a3', name: '台新台幣', bank: '台新銀行', category: 'saving', type: 'asset' },
+      { id: 'a4', name: '台新外幣', bank: '台新銀行', category: 'saving', type: 'asset' },
+      { id: 'a9', name: '台新證卷', bank: '台新銀行', category: 'stock', type: 'asset' },
+      { id: 'l1', name: '台新卡費', bank: '台新銀行', category: 'card', type: 'liability' },
     ] as ProjectItem[]
   },
   {
@@ -41,8 +41,15 @@ export const INSTITUTIONS = [
     id: 'inst-megabank',
     name: '兆豐銀行',
     items: [
-      { id: 'a7', name: '兆豐存款', bank: '兆豐銀行', category: 'saving', type: 'asset' },
+      { id: 'a10', name: '兆豐台幣', bank: '兆豐銀行', category: 'saving', type: 'asset' },
       { id: 'l3', name: '兆豐貸款', bank: '兆豐銀行', category: 'loan', type: 'liability' },
+    ] as ProjectItem[]
+  },
+  {
+    id: 'inst-landbank',
+    name: '土地銀行',
+    items: [
+      { id: 'a11', name: '土地銀行台幣', bank: '土地銀行', category: 'saving', type: 'asset' },
     ] as ProjectItem[]
   },
   {
@@ -51,6 +58,7 @@ export const INSTITUTIONS = [
     items: [
       { id: 'a8', name: '永豐台幣', bank: '永豐銀行', category: 'saving', type: 'asset' },
       { id: 'l4', name: '永豐卡費', bank: '永豐銀行', category: 'card', type: 'liability' },
+      { id: 'l5', name: '公費存款(扣項)', bank: '永豐銀行', category: 'other', type: 'liability' },
     ] as ProjectItem[]
   },
   {
@@ -61,8 +69,16 @@ export const INSTITUTIONS = [
       { id: 'i3', name: '中鴻', category: 'stock', type: 'investment', symbol: '2014', bank: '股票與投資' },
       { id: 'i4', name: '台達電', category: 'stock', type: 'investment', symbol: '2308', bank: '股票與投資' },
       { id: 'i5', name: '聯發科', category: 'stock', type: 'investment', symbol: '2454', bank: '股票與投資' },
-      { id: 'i6', name: 'GOOGL', category: 'stock', type: 'investment', symbol: 'GOOGL', bank: '股票與投資' },
+      { id: 'i6', name: 'GOOGL', category: 'stock', type: 'investment', symbol: 'GOOGL', bank: '股票與投資', currency: 'USD' },
       { id: 'i7', name: 'BTC', category: 'crypto', type: 'investment', symbol: 'BTC', bank: '股票與投資' },
+    ] as ProjectItem[]
+  },
+  {
+    id: 'inst-csc-trust',
+    name: '中鋼持股信託',
+    items: [
+      { id: 'i8', name: '中鋼持股信託', category: 'stock', type: 'investment', symbol: '2002', bank: '中鋼持股信託' },
+      { id: 'i9', name: '公提金', category: 'stock', type: 'investment', symbol: '2002', bank: '中鋼持股信託' },
     ] as ProjectItem[]
   }
 ];

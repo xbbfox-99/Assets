@@ -3,12 +3,13 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react'
 import { X, Save, Calculator, Landmark, Plus, ChevronUp, ChevronDown, RefreshCw, TrendingUp, TrendingDown, Trash2, GripVertical } from 'lucide-react';
 import { db, auth, OperationType, handleFirestoreError } from '../lib/firebase';
 import { collection, addDoc, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { INSTITUTIONS, ProjectItem } from '../constants';
+import { INSTITUTIONS, ProjectItem, DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT_INVESTMENTS } from '../constants';
 import { Asset, Liability, Investment } from '../types';
+import { getExchangeRate } from '../lib/exchangeRate';
 
 interface BatchEntryProps {
   onClose: () => void;
-  initialItems?: (Asset | Liability | Investment)[] | null;
+  initialItems?: (Asset | Liability | Investment)[];
 }
 
 // Internal component for Draggable items with restricted handle
@@ -19,11 +20,14 @@ const BankItem: React.FC<{
   totalItems: number;
   amounts: { [key: string]: string };
   currencies: { [key: string]: string };
+  exchangeRates: { [key: string]: string };
   investmentData: { [key: string]: { shares: string, price: string, cost?: string } };
   marketPrices: Record<string, number>;
   confirmingDelete: { instIdx: number, itemId: string } | null;
+  fetchingRates: Record<string, boolean>;
   handleAmountChange: (id: string, value: string) => void;
   handleCurrencyChange: (id: string, value: string) => void;
+  handleExchangeRateChange: (id: string, value: string) => void;
   handleInvestmentChange: (id: string, field: 'shares' | 'price' | 'cost', value: string) => void;
   handleDeleteItem: (instIdx: number, itemId: string) => void;
   onMove: (idx: number, direction: 'up' | 'down') => void;
@@ -35,6 +39,7 @@ const BankItem: React.FC<{
   totalItems,
   amounts, 
   currencies,
+  exchangeRates,
   investmentData, 
   marketPrices, 
   confirmingDelete, 
@@ -43,10 +48,14 @@ const BankItem: React.FC<{
   handleInvestmentChange, 
   handleDeleteItem,
   onMove,
-  calculatePL
+  calculatePL,
+  handleExchangeRateChange,
+  fetchingRates
 }) => {
   const pl = item.type === 'investment' ? calculatePL(item) : null;
   const currentCurrency = currencies[item.id] || item.currency || 'TWD';
+  const currentExRate = exchangeRates[item.id] || (item as any).exchangeRate?.toString() || '1';
+  const isFetchingRate = fetchingRates[item.id];
 
   return (
     <motion.div 
@@ -81,8 +90,8 @@ const BankItem: React.FC<{
             }}
             className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all z-20 gap-2 ${
               confirmingDelete?.itemId === item.id 
-                ? 'bg-rose-500 text-white w-auto px-4 ring-2 ring-rose-200' 
-                : 'text-rose-400/60 hover:text-rose-600 hover:bg-rose-50'
+                ? 'bg-rose-900/80 text-white w-auto px-4 ring-1 ring-rose-500/50' 
+                : 'text-rose-400/40 hover:text-wabi-up hover:bg-wabi-up/10'
             }`}
           >
             <Trash2 size={confirmingDelete?.itemId === item.id ? 14 : 16} />
@@ -102,9 +111,9 @@ const BankItem: React.FC<{
                   (item.type === 'asset' ? '資產' : '負債')
                 )}
               </p>
-              {item.category === 'foreign' && (
+              {(item.category === 'foreign' || item.type === 'investment') && (
                 <div className="flex bg-wabi-bg rounded-md p-0.5 border border-wabi-accent/5">
-                  {['USD', 'JPY', 'EUR'].map((curr) => (
+                  {['TWD', 'USD', 'JPY', 'EUR'].map((curr) => (
                     <button
                       key={curr}
                       onClick={() => handleCurrencyChange(item.id, curr)}
@@ -119,57 +128,87 @@ const BankItem: React.FC<{
           </div>
         </div>
 
-        {item.type !== 'investment' ? (
-          <div className="relative flex items-center gap-2">
-            <input
-              type="number"
-              placeholder="0"
-              value={amounts[item.id] || ''}
-              onChange={e => handleAmountChange(item.id, e.target.value)}
-              className="w-full sm:w-32 bg-transparent py-1 text-right font-serif text-lg text-wabi-ink focus:border-wabi-ink outline-none transition-colors tabular-nums"
-            />
-            <span className="text-[10px] text-wabi-stone w-8 text-left">{currentCurrency}</span>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1">
+            {item.type !== 'investment' ? (
+              <div className="relative flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={amounts[item.id] || ''}
+                  onChange={e => handleAmountChange(item.id, e.target.value)}
+                  className={`w-full sm:w-32 bg-transparent py-1 text-right font-serif text-lg text-wabi-ink focus:border-wabi-ink outline-none transition-colors tabular-nums border-b border-white/5`}
+                />
+                <span className="text-[10px] text-wabi-stone w-8 text-left">{currentCurrency}</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 flex-grow sm:flex-grow-0 sm:flex sm:items-center sm:gap-4">
+                <div className="w-full sm:w-16">
+                  <p className="text-[8px] text-wabi-stone uppercase text-right">股數</p>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={investmentData[item.id]?.shares || ''}
+                    onChange={e => handleInvestmentChange(item.id, 'shares', e.target.value)}
+                    className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
+                  />
+                </div>
+                <div className="w-full sm:w-20">
+                  <p className="text-[8px] text-wabi-stone uppercase text-right">成本</p>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={investmentData[item.id]?.cost || ''}
+                    onChange={e => handleInvestmentChange(item.id, 'cost', e.target.value)}
+                    className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
+                  />
+                </div>
+                <div className="w-full sm:w-20">
+                  <p className="text-[8px] text-wabi-stone uppercase text-right mx-1">市價({currentCurrency})</p>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={investmentData[item.id]?.price || ''}
+                    onChange={e => handleInvestmentChange(item.id, 'price', e.target.value)}
+                    className={`w-full bg-transparent py-1 text-right font-serif text-sm outline-none transition-colors ${item.symbol && marketPrices[item.symbol] ? 'text-wabi-accent font-bold' : 'text-wabi-ink'}`}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2 flex-grow sm:flex-grow-0 sm:flex sm:items-center sm:gap-4">
-            <div className="w-full sm:w-16">
-              <p className="text-[8px] text-wabi-stone uppercase text-right">股數</p>
-              <input
-                type="number"
-                placeholder="0"
-                value={investmentData[item.id]?.shares || ''}
-                onChange={e => handleInvestmentChange(item.id, 'shares', e.target.value)}
-                className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
-              />
+          
+          {currentCurrency !== 'TWD' && (
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] text-wabi-stone uppercase tracking-widest flex items-center gap-1">
+                  匯率 Rate
+                  {isFetchingRate && <RefreshCw size={8} className="animate-spin" />}
+                </span>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="1.0"
+                  value={currentExRate}
+                  onChange={e => handleExchangeRateChange(item.id, e.target.value)}
+                  className={`w-16 bg-wabi-bg px-2 py-0.5 text-right font-serif text-[10px] text-wabi-ink border-b border-wabi-accent/30 focus:border-wabi-ink outline-none transition-opacity ${isFetchingRate ? 'opacity-50' : 'opacity-100'}`}
+                />
+              </div>
+              <p className="text-[10px] text-wabi-accent font-medium tabular-nums">
+                ≈ {new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(
+                  (item.type === 'investment' 
+                    ? (Number(investmentData[item.id]?.shares || 0) * Number(investmentData[item.id]?.price || 0))
+                    : Number(amounts[item.id] || 0)) * Number(currentExRate)
+                )}
+              </p>
             </div>
-            <div className="w-full sm:w-20">
-              <p className="text-[8px] text-wabi-stone uppercase text-right">成本</p>
-              <input
-                type="number"
-                placeholder="0"
-                value={investmentData[item.id]?.cost || ''}
-                onChange={e => handleInvestmentChange(item.id, 'cost', e.target.value)}
-                className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
-              />
-            </div>
-            <div className="w-full sm:w-20">
-              <p className="text-[8px] text-wabi-stone uppercase text-right">目前市價</p>
-              <input
-                type="number"
-                placeholder="0"
-                value={investmentData[item.id]?.price || ''}
-                onChange={e => handleInvestmentChange(item.id, 'price', e.target.value)}
-                className={`w-full bg-transparent py-1 text-right font-serif text-sm outline-none transition-colors ${item.symbol && marketPrices[item.symbol] ? 'text-blue-600 font-bold' : 'text-wabi-ink'}`}
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       {pl && (
         <div className="flex items-center justify-end gap-2 text-[10px]">
           <span className="text-wabi-stone">本期損益:</span>
-          <div className={`flex items-center gap-1 font-medium ${pl.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <div className={`flex items-center gap-1 font-medium ${pl.profit >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>
             {pl.profit >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
             <span>${Math.abs(pl.profit).toLocaleString()}</span>
             <span className="opacity-60">({pl.percent.toFixed(2)}%)</span>
@@ -191,8 +230,10 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
   // Track amounts and investment details
   const [amounts, setAmounts] = useState<{ [key: string]: string }>({});
   const [currencies, setCurrencies] = useState<{ [key: string]: string }>({});
+  const [exchangeRates, setExchangeRates] = useState<{ [key: string]: string }>({});
   const [investmentData, setInvestmentData] = useState<{ [key: string]: { shares: string, price: string, cost?: string } }>({});
   const [marketPrices, setMarketPrices] = useState<Record<string, number>>({});
+  const [fetchingRates, setFetchingRates] = useState<Record<string, boolean>>({});
   const [isFetching, setIsFetching] = useState(false);
   const [currentInstIndex, setCurrentInstIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState(0);
@@ -220,6 +261,11 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
 
   // Load persistence templates and merge with initialItems if editing
   useEffect(() => {
+    const normalizeBankName = (name: string) => {
+      if (name === '台新' || name === '台新銀行') return '台新銀行';
+      return name;
+    };
+
     const fetchTemplatesAndInitial = async () => {
       if (!auth.currentUser) return;
       
@@ -227,7 +273,79 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
       try {
         const docSnap = await getDoc(doc(db, `users/${auth.currentUser.uid}/settings`, 'templates'));
         if (docSnap.exists() && docSnap.data().institutions) {
-          baseInstitutions = docSnap.data().institutions;
+          const storedInsts = docSnap.data().institutions;
+          // Merge missing defaults from constants (e.g. newly added "中鋼持股信託" or new items)
+          const updatedStoredInsts = storedInsts.map((sInst: any) => {
+            // Remove requested items: 兆豐存款, 台新證卷 and 中鋼持股信託's 投資項目/負債
+            if (sInst.name === '兆豐銀行') {
+              sInst.items = (sInst.items || []).filter((i: any) => i.name !== '兆豐存款');
+            }
+            if (sInst.name === '台新銀行') {
+              sInst.items = (sInst.items || []).filter((i: any) => i.name !== '台新證卷');
+            }
+            if (sInst.name === '中鋼持股信託') {
+              sInst.items = (sInst.items || []).filter((i: any) => i.name !== '投資項目' && i.type !== 'liability');
+            }
+
+            const defaultInst = INSTITUTIONS.find(d => d.id === sInst.id);
+            // Deduplicate existing items by ID first
+            const existingIds = new Set();
+            const uniqueExistingItems = (sInst.items || []).filter((i: any) => {
+              if (!i.id || existingIds.has(i.id)) return false;
+              existingIds.add(i.id);
+              return true;
+            });
+            sInst.items = uniqueExistingItems;
+
+            const sItemIds = new Set(sInst.items.map((i: any) => i.id));
+            const sItemNames = new Set(sInst.items.map((i: any) => i.name.trim()));
+            if (defaultInst) {
+              const missingItems = defaultInst.items.filter(i => !sItemIds.has(i.id) && !sItemNames.has(i.name.trim()));
+              if (missingItems.length > 0) {
+                return { ...sInst, items: [...uniqueExistingItems, ...missingItems] };
+              }
+            }
+            return { ...sInst, items: uniqueExistingItems };
+          });
+
+          const storedIds = new Set(updatedStoredInsts.map((inst: any) => inst.id));
+          const newFromDefaults = INSTITUTIONS.filter(inst => !storedIds.has(inst.id));
+          
+          if (newFromDefaults.length > 0) {
+            // Find "股票與投資" or similar to place it after
+            const investIdx = updatedStoredInsts.findIndex((inst: any) => inst.name.includes('投資') || inst.name.includes('股票'));
+            if (investIdx !== -1) {
+              baseInstitutions = [
+                ...updatedStoredInsts.slice(0, investIdx + 1),
+                ...newFromDefaults,
+                ...updatedStoredInsts.slice(investIdx + 1)
+              ];
+            } else {
+              baseInstitutions = [...updatedStoredInsts, ...newFromDefaults];
+            }
+          } else {
+            baseInstitutions = updatedStoredInsts;
+          }
+
+          // Final safety deduplication of institutions by ID and items within them
+          const finalInstIds = new Set();
+          baseInstitutions = baseInstitutions.filter(inst => {
+            if (finalInstIds.has(inst.id)) return false;
+            finalInstIds.add(inst.id);
+
+            // Deduplicate items within this institution
+            const seenItemIds = new Set();
+            const seenItemNames = new Set();
+            inst.items = inst.items.filter((item: any) => {
+              const nameKey = item.name.trim();
+              if (seenItemIds.has(item.id) || seenItemNames.has(nameKey)) return false;
+              seenItemIds.add(item.id);
+              seenItemNames.add(nameKey);
+              return true;
+            });
+
+            return true;
+          });
         }
       } catch (err) {
         handleFirestoreError(err, OperationType.GET, `users/${auth.currentUser.uid}/settings/templates`);
@@ -236,6 +354,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
       if (initialItems && initialItems.length > 0) {
         const newAmounts: Record<string, string> = { ...amounts };
         const newCurrencies: Record<string, string> = { ...currencies };
+        const newExRates: Record<string, string> = { ...exchangeRates };
         const newInvest: Record<string, any> = { ...investmentData };
         
         const firstItem = initialItems[0];
@@ -244,11 +363,11 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
         setDate(targetDate.toISOString().split('T')[0]);
 
         // Group initial items by bank
-        const groupedByBank: Record<string, (Asset | Liability | Investment)[]> = {};
+        const groupedBatchItems: Record<string, (Asset | Liability | Investment)[]> = {};
         initialItems.forEach(item => {
-          const bankName = (item as any).bank || '其他';
-          if (!groupedByBank[bankName]) groupedByBank[bankName] = [];
-          groupedByBank[bankName].push(item);
+          const bankName = normalizeBankName((item as any).bank || '其他');
+          if (!groupedBatchItems[bankName]) groupedBatchItems[bankName] = [];
+          groupedBatchItems[bankName].push(item);
           
           if (item.type === 'investment') {
             newInvest[item.id] = {
@@ -256,19 +375,25 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
               price: (item as any).marketPrice?.toString() || '',
               cost: (item as any).avgCost?.toString() || ''
             };
+            newCurrencies[item.id] = (item as any).currency || 'TWD';
+            newExRates[item.id] = (item as any).exchangeRate?.toString() || '1';
           } else {
             newAmounts[item.id] = item.amount?.toString() || '';
             newCurrencies[item.id] = (item as any).currency || 'TWD';
+            newExRates[item.id] = (item as any).exchangeRate?.toString() || '1';
           }
         });
 
         // Merge initial items into base institutions
-        const mergedInstitutions = [...baseInstitutions];
+        const mergedInstitutions = baseInstitutions.map(inst => ({
+          ...inst,
+          items: [...inst.items]
+        }));
         
-        // Update existing institutions with items from initialItems (matching by name or creating if missing)
-        Object.entries(groupedByBank).forEach(([bankName, items]) => {
-          const existingInst = mergedInstitutions.find(inst => inst.name === bankName);
-          const projectItems: ProjectItem[] = items.map(item => ({
+        Object.entries(groupedBatchItems).forEach(([bankName, batchItems]) => {
+          let existingInst = mergedInstitutions.find(inst => normalizeBankName(inst.name) === bankName);
+          
+          const batchProjectItems: ProjectItem[] = batchItems.map(item => ({
             id: item.id,
             name: item.name,
             bank: bankName,
@@ -279,24 +404,59 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
           }));
 
           if (existingInst) {
-            // Merge items: prefer items from initialItems if there's a match, otherwise keep template items
-            // Actually, if we are editing a SPECIFIC batch, we should probably ONLY show items that were in that batch for that bank?
-            // No, the user said "other bank items also want to preserve", implying they want to see all templates.
-            // So we replace the items in the existing institution with the ones from the batch if they exist.
-            existingInst.items = projectItems;
+            // Deduplicate batch items by ID (first) then by name to ensure clean merge
+            const seenIds = new Set();
+            const uniqueBatchItems = batchProjectItems.filter(bi => {
+              if (seenIds.has(bi.id)) return false;
+              seenIds.add(bi.id);
+              return true;
+            });
+
+            // Replace matching template items with batch items (matching by name)
+            existingInst.items = existingInst.items.map(templateItem => {
+              const matchedBatchItem = uniqueBatchItems.find(bi => bi.name.trim() === templateItem.name.trim());
+              return matchedBatchItem || templateItem;
+            });
+
+            // Add batch items that weren't in the template (by name or ID)
+            const templateItemNames = new Set(existingInst.items.map(ti => ti.name.trim()));
+            const templateItemIds = new Set(existingInst.items.map(ti => ti.id));
+            
+            uniqueBatchItems.forEach(bi => {
+              if (!templateItemNames.has(bi.name.trim()) && !templateItemIds.has(bi.id)) {
+                existingInst!.items.push(bi);
+              }
+            });
           } else {
-            // New bank from historical data not in templates
+            // New bank from historical data
             mergedInstitutions.push({
               id: `inst-${bankName}`,
               name: bankName,
-              items: projectItems
+              items: batchProjectItems
             });
           }
+        });
+
+        // Initialize empty states for template items that weren't in this specific batch
+        mergedInstitutions.forEach(inst => {
+          inst.items.forEach(item => {
+            if (newCurrencies[item.id] === undefined) {
+              newCurrencies[item.id] = item.currency || (item.category === 'foreign' ? 'USD' : 'TWD');
+            }
+            if (newExRates[item.id] === undefined) {
+              newExRates[item.id] = (item as any).exchangeRate?.toString() || '1';
+            }
+            if (newAmounts[item.id] === undefined) newAmounts[item.id] = '';
+            if (item.type === 'investment' && newInvest[item.id] === undefined) {
+              newInvest[item.id] = { shares: '', price: '', cost: '' };
+            }
+          });
         });
 
         setInstitutions(mergedInstitutions);
         setAmounts(newAmounts);
         setCurrencies(newCurrencies);
+        setExchangeRates(newExRates);
         setInvestmentData(newInvest);
       } else {
         setInstitutions(baseInstitutions);
@@ -314,12 +474,14 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
     
     const initialAmounts: Record<string, string> = { ...amounts };
     const initialCurrencies: Record<string, string> = { ...currencies };
+    const initialExRates: Record<string, string> = { ...exchangeRates };
     const initialInvest: Record<string, any> = { ...investmentData };
     
     institutions.forEach(inst => {
       inst.items.forEach(item => {
         if (initialAmounts[item.id] === undefined) initialAmounts[item.id] = '';
         if (initialCurrencies[item.id] === undefined) initialCurrencies[item.id] = item.currency || (item.category === 'foreign' ? 'USD' : 'TWD');
+        if (initialExRates[item.id] === undefined) initialExRates[item.id] = (item as any).exchangeRate?.toString() || '1';
         if (item.type === 'investment' && initialInvest[item.id] === undefined) {
           initialInvest[item.id] = { shares: '', price: '', cost: '' };
         }
@@ -328,6 +490,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
     
     setAmounts(initialAmounts);
     setCurrencies(initialCurrencies);
+    setExchangeRates(initialExRates);
     setInvestmentData(initialInvest);
   }, [institutions, hasLoadedTemplates]);
 
@@ -376,8 +539,12 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
         });
       });
       setInvestmentData(newInvestData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Fetch error:', err);
+      // More informative alert for the user if it's a network error
+      if (err instanceof Error && err.message === 'Failed to fetch') {
+        alert('網路連線或是伺服器暫時無法回應，請稍後再試。 (Network/Fetch Error)');
+      }
     } finally {
       setIsFetching(false);
     }
@@ -387,8 +554,27 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
     setAmounts(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleCurrencyChange = (id: string, value: string) => {
+  const handleCurrencyChange = async (id: string, value: string) => {
     setCurrencies(prev => ({ ...prev, [id]: value }));
+    
+    // Automatically fetch exchange rate
+    if (value === 'TWD') {
+      setExchangeRates(prev => ({ ...prev, [id]: '1' }));
+    } else {
+      setFetchingRates(prev => ({ ...prev, [id]: true }));
+      try {
+        const rate = await getExchangeRate(value, 'TWD');
+        setExchangeRates(prev => ({ ...prev, [id]: rate.toString() }));
+      } catch (err) {
+        console.error('Failed to fetch rate for batch item:', err);
+      } finally {
+        setFetchingRates(prev => ({ ...prev, [id]: false }));
+      }
+    }
+  };
+
+  const handleExchangeRateChange = (id: string, value: string) => {
+    setExchangeRates(prev => ({ ...prev, [id]: value }));
   };
 
   const handleInvestmentChange = (id: string, field: 'shares' | 'price' | 'cost', value: string) => {
@@ -406,7 +592,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
     
     // Strict typing: if it's a known investment institution, force investment.
     // Otherwise force asset/liability options.
-    const isInvest = inst?.name.includes('投資') || inst?.name.includes('股票') || inst?.name.includes('證券');
+    const isInvest = inst?.name.includes('投資') || inst?.name.includes('股票') || inst?.name.includes('證券') || inst?.name.includes('中鋼持股信託');
     setNewItemType(isInvest ? 'investment' : 'asset');
   };
 
@@ -489,6 +675,11 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
   };
 
   const handleDeleteBank = (instIdx: number) => {
+    const instName = institutions[instIdx].name;
+    if (instName === '股票與投資' || instName === '中鋼持股信託') {
+      return;
+    }
+
     if (confirmingBankDelete !== instIdx) {
       setConfirmingBankDelete(instIdx);
       setTimeout(() => setConfirmingBankDelete(prev => prev === instIdx ? null : prev), 3000);
@@ -618,13 +809,14 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
         };
 
         const itemCurrency = currencies[item.id] || item.currency || 'TWD';
+        const itemExchangeRate = Number(exchangeRates[item.id]) || 1;
 
         if (item.type === 'asset') {
           collectionPath = `users/${auth.currentUser!.uid}/assets`;
           payload.amount = Number(amounts[item.id]);
           payload.bank = item.bank || '其他';
           payload.currency = itemCurrency;
-          payload.exchangeRate = 1; 
+          payload.exchangeRate = itemExchangeRate; 
         } else if (item.type === 'liability') {
           collectionPath = `users/${auth.currentUser!.uid}/liabilities`;
           payload.amount = Number(amounts[item.id]);
@@ -636,8 +828,8 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
           payload.avgCost = Number(investmentData[item.id].cost || 0);
           payload.symbol = item.symbol || '';
           payload.amount = payload.shares * payload.marketPrice;
-          payload.currency = 'TWD'; 
-          payload.exchangeRate = 1;
+          payload.currency = itemCurrency; 
+          payload.exchangeRate = itemExchangeRate;
           payload.bank = item.bank || '其他';
         }
 
@@ -681,9 +873,11 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
             <p className="text-[9px] text-wabi-stone tracking-[0.3em] uppercase">Step {currentInstIndex + 1} of {institutions.length}</p>
             <h2 className="text-xl font-serif text-wabi-ink">{isEditing ? '編輯歷史紀錄' : '本期資料填報'}</h2>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-white transition-colors border border-transparent hover:border-wabi-accent/10">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-white/5 transition-colors border border-transparent hover:border-wabi-accent/20">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 mb-4">
@@ -693,7 +887,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
               type="date" 
               value={date}
               onChange={e => setDate(e.target.value)}
-              className="w-full bg-white border border-wabi-accent/10 rounded-xl px-3 py-2 text-[11px] text-wabi-ink focus:outline-none shadow-sm"
+              className="w-full bg-wabi-paper border border-wabi-accent/20 rounded-xl px-3 py-2 text-[11px] text-wabi-ink focus:outline-none shadow-sm"
             />
           </div>
           <button 
@@ -724,8 +918,8 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                 }}
                 className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all duration-300 pointer-events-auto cursor-pointer ${
                   i === currentInstIndex 
-                    ? 'bg-wabi-ink text-white shadow-sm ring-1 ring-wabi-ink' 
-                    : 'bg-wabi-paper text-wabi-stone border border-wabi-accent/5 hover:bg-white'
+                    ? 'bg-wabi-ink text-wabi-bg shadow-sm ring-1 ring-wabi-ink' 
+                    : 'bg-wabi-paper text-wabi-stone border border-wabi-accent/10 hover:bg-wabi-accent/20'
                 }`}
               >
                 {inst.name}
@@ -787,30 +981,32 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBank(instIdx);
-                          }}
-                          className={`px-3 h-8 rounded-full flex items-center justify-center transition-all gap-2 ${
-                            confirmingBankDelete === instIdx 
-                              ? 'bg-rose-500 text-white w-auto ring-2 ring-rose-200 opacity-100' 
-                              : 'text-rose-400 opacity-0 group-hover/title:opacity-100 hover:bg-rose-50'
-                          }`}
-                        >
-                          <Trash2 size={confirmingBankDelete === instIdx ? 12 : 14} />
-                          {confirmingBankDelete === instIdx && <span className="text-[10px] font-bold">移除分類？</span>}
-                        </button>
+                        {inst.name !== '股票與投資' && inst.name !== '中鋼持股信託' && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBank(instIdx);
+                            }}
+                            className={`px-3 h-8 rounded-full flex items-center justify-center transition-all gap-2 ${
+                              confirmingBankDelete === instIdx 
+                                ? 'bg-rose-900/80 text-white w-auto ring-1 ring-rose-500/50 opacity-100' 
+                                : 'text-rose-400/40 opacity-0 group-hover/title:opacity-100 hover:bg-wabi-up/10'
+                            }`}
+                          >
+                            <Trash2 size={confirmingBankDelete === instIdx ? 12 : 14} />
+                            {confirmingBankDelete === instIdx && <span className="text-[10px] font-bold">移除分類？</span>}
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleAddItem(inst.id)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-ink bg-white shadow-sm border border-wabi-accent/10 hover:scale-110 active:scale-95 transition-all"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-ink bg-wabi-paper shadow-sm border border-wabi-accent/20 hover:scale-110 active:scale-95 transition-all"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
                     </div>
 
-                      <div className="bg-white/50 p-4 rounded-3xl border border-wabi-accent/5 shadow-sm min-h-[300px]">
+                      <div className="bg-wabi-paper/50 p-4 rounded-3xl border border-wabi-accent/10 shadow-sm min-h-[300px]">
                         {inst.items.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                             <div className="w-12 h-12 rounded-full bg-wabi-paper flex items-center justify-center text-wabi-stone/30">
@@ -837,15 +1033,18 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                                 totalItems={inst.items.length}
                                 amounts={amounts}
                                 currencies={currencies}
+                                exchangeRates={exchangeRates}
                                 investmentData={investmentData}
                                 marketPrices={marketPrices}
                                 confirmingDelete={confirmingDelete}
                                 handleAmountChange={handleAmountChange}
                                 handleCurrencyChange={handleCurrencyChange}
+                                handleExchangeRateChange={handleExchangeRateChange}
                                 handleInvestmentChange={handleInvestmentChange}
                                 handleDeleteItem={handleDeleteItem}
                                 onMove={(idx, dir) => moveItemInInst(instIdx, idx, dir)}
                                 calculatePL={calculatePL}
+                                fetchingRates={fetchingRates}
                               />
                             ))}
                           </div>
@@ -870,28 +1069,28 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                                       <button 
                                         type="button"
                                         onClick={() => setNewItemType('asset')}
-                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'asset' ? 'bg-wabi-ink text-wabi-paper border-wabi-ink font-bold shadow-md' : 'bg-white text-wabi-stone border-wabi-accent/10 hover:bg-wabi-paper'}`}
+                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'asset' ? 'bg-wabi-ink text-wabi-bg border-wabi-ink font-bold shadow-md' : 'bg-wabi-paper text-wabi-stone border-wabi-accent/10 hover:bg-wabi-accent/20'}`}
                                       >
                                         資產
                                       </button>
                                       <button 
                                         type="button"
                                         onClick={() => setNewItemType('foreign_asset')}
-                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'foreign_asset' ? 'bg-wabi-ink text-wabi-paper border-wabi-ink font-bold shadow-md' : 'bg-white text-wabi-stone border-wabi-accent/10 hover:bg-wabi-paper'}`}
+                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'foreign_asset' ? 'bg-wabi-ink text-wabi-bg border-wabi-ink font-bold shadow-md' : 'bg-wabi-paper text-wabi-stone border-wabi-accent/10 hover:bg-wabi-accent/20'}`}
                                       >
                                         外幣資產
                                       </button>
                                       <button 
                                         type="button"
                                         onClick={() => setNewItemType('card')}
-                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'card' ? 'bg-wabi-ink text-wabi-paper border-wabi-ink font-bold shadow-md' : 'bg-white text-wabi-stone border-wabi-accent/10 hover:bg-wabi-paper'}`}
+                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'card' ? 'bg-wabi-ink text-wabi-bg border-wabi-ink font-bold shadow-md' : 'bg-wabi-paper text-wabi-stone border-wabi-accent/10 hover:bg-wabi-accent/20'}`}
                                       >
                                         卡費
                                       </button>
                                       <button 
                                         type="button"
                                         onClick={() => setNewItemType('liability')}
-                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'liability' ? 'bg-wabi-ink text-wabi-paper border-wabi-ink font-bold shadow-md' : 'bg-white text-wabi-stone border-wabi-accent/10 hover:bg-wabi-paper'}`}
+                                        className={`py-3 text-[10px] uppercase tracking-widest rounded-xl border transition-all ${newItemType === 'liability' ? 'bg-wabi-ink text-wabi-bg border-wabi-ink font-bold shadow-md' : 'bg-wabi-paper text-wabi-stone border-wabi-accent/10 hover:bg-wabi-accent/20'}`}
                                       >
                                         負債
                                       </button>
@@ -905,14 +1104,14 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                                   placeholder="請輸入項目名稱 (如：薪資帳戶)"
                                   value={newItemName}
                                   onChange={e => setNewItemName(e.target.value)}
-                                  className="w-full bg-white px-4 py-2 text-xs rounded-xl border border-wabi-accent/10 outline-none"
+                                  className="w-full bg-wabi-paper px-4 py-2 text-xs rounded-xl border border-wabi-accent/20 outline-none text-wabi-ink"
                                 />
                                 {newItemType === 'investment' && (
                                   <input 
                                     placeholder="股票代碼 (如：2330)"
                                     value={newItemSymbol}
                                     onChange={e => setNewItemSymbol(e.target.value)}
-                                    className="w-full bg-white px-4 py-2 text-xs rounded-xl border border-wabi-accent/10 outline-none"
+                                    className="w-full bg-wabi-paper px-4 py-2 text-xs rounded-xl border border-wabi-accent/20 outline-none text-wabi-ink"
                                   />
                                 )}
                                 <div className="flex gap-2">
@@ -955,7 +1154,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="w-full max-w-sm bg-white rounded-[2rem] border border-wabi-accent/10 shadow-2xl p-8 space-y-6"
+                className="w-full max-w-sm bg-wabi-paper rounded-[2rem] border border-wabi-accent/20 shadow-2xl p-8 space-y-6"
               >
                 <div className="space-y-2">
                   <p className="text-[10px] text-wabi-stone uppercase tracking-[0.3em] font-semibold">New Group</p>
@@ -966,7 +1165,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
                   placeholder="如：渣打銀行、富邦證券..."
                   value={newBankName}
                   onChange={e => setNewBankName(e.target.value)}
-                  className="w-full bg-wabi-bg px-6 py-4 rounded-2xl border border-wabi-accent/10 outline-none text-sm focus:border-wabi-ink transition-colors"
+                  className="w-full bg-wabi-bg px-6 py-4 rounded-2xl border border-wabi-accent/20 outline-none text-sm focus:border-wabi-ink text-wabi-ink transition-colors"
                   onKeyDown={e => e.key === 'Enter' && confirmAddBank()}
                 />
                 <div className="flex gap-3">
@@ -994,7 +1193,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
         <button
           disabled={loading}
           onClick={handleSaveAll}
-          className="w-auto px-12 py-4 bg-emerald-600 text-white rounded-full text-xs font-bold uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          className="w-auto px-12 py-4 bg-wabi-ink text-wabi-bg rounded-full text-xs font-bold uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
           {loading ? '儲存中...' : (isEditing ? '更新此份紀錄' : '確認儲存全部')}
         </button>
