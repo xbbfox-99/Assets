@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "Asset": {
+      "title": "Asset",
+      "description": "Represents a financial asset like a bank account or cash.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string", "enum": ["saving", "term_deposit", "liquid"] },
+        "bank": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "exchangeRate": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "amount", "updatedAt"]
+    },
+    "Liability": {
+      "title": "Liability",
+      "description": "Represents a financial liability like a loan or credit card bill.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string", "enum": ["loan", "card", "investment_payable"] },
+        "amount": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "amount", "updatedAt"]
+    },
+    "Investment": {
+      "title": "Investment",
+      "description": "Represents an investment like stocks or crypto.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "category": { "type": "string", "enum": ["stock", "crypto", "fund"] },
+        "shares": { "type": "number" },
+        "avgCost": { "type": "number" },
+        "marketPrice": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "updatedAt"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Bill payment reminders.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "day": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["userId", "name", "day"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User specific settings including batch entry templates.",
+      "type": "object",
+      "properties": {
+        "institutions": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}/assets": {
+      "schema": "Asset",
+      "description": "User's financial assets."
+    },
+    "users/{userId}/liabilities": {
+      "schema": "Liability",
+      "description": "User's financial liabilities."
+    },
+    "users/{userId}/investments": {
+      "schema": "Investment",
+      "description": "User's investments."
+    },
+    "users/{userId}/reminders": {
+      "schema": "Reminder",
+      "description": "User's billing reminders."
+    },
+    "users/{userId}/settings": {
+      "schema": "UserSettings",
+      "description": "User settings and balance table templates."
+    }
+  }
+}

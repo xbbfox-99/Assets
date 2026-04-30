@@ -1,0 +1,6 @@
+{
+  "name": "WabiBalance - 日式極簡資產負債表",
+  "description": "提供日式極簡風格的資產負債管理功能，支援手機 PWA 瀏覽與 Firebase 即時同步。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["PWA", "Firebase Sync"]
+}
