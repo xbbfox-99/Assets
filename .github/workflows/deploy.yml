@@ -40,6 +40,9 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 如果有其他 VITE_ 開頭的變數，也請在此處添加
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
