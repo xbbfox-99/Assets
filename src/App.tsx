@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { useData } from './lib/useData';
 import { Layout } from './components/Layout';
@@ -33,23 +33,27 @@ function AppContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  if (!user) return <Login />;
-
-  const isTestUser = user.email?.startsWith('test@');
+  const isTestUser = user?.email?.startsWith('test@');
 
   const handleSeed = async () => {
     if (!user || isSeeding) return;
     setIsSeeding(true);
     try {
       await seedDemoData(user.uid);
-      alert('示範資料已生成');
     } catch (err) {
       console.error(err);
-      alert('生成失敗');
     } finally {
       setIsSeeding(false);
     }
   };
+
+  useEffect(() => {
+    if (isTestUser && !loading && assets.length === 0 && liabilities.length === 0 && !isSeeding) {
+      handleSeed();
+    }
+  }, [isTestUser, loading, assets.length, liabilities.length, isSeeding]);
+
+  if (!user) return <Login />;
 
   const handleDelete = async (id: string, path: string, skipConfirm = false) => {
     if (!skipConfirm && !window.confirm('確定要刪除此項目嗎？')) return;

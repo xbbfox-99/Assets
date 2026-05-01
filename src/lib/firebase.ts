@@ -76,20 +76,23 @@ async function testConnection() {
 testConnection();
 
 // Bridge: User passcode to a persistent hidden account for sync
-const getEmailForPasscode = (passcode: string) => `${passcode.toLowerCase()}@wabibalance.local`;
+const getEmailForPasscode = (passcode: string) => {
+  if (passcode.toUpperCase() === 'HAERIN') return 'user@wabibalance.local';
+  return `${passcode.toLowerCase()}@wabibalance.local`;
+};
+const getPasswordForPasscode = (passcode: string) => passcode.length >= 6 ? passcode : passcode.padEnd(6, '0');
 
 export const loginWithPasscode = async (passcode: string) => {
   const email = getEmailForPasscode(passcode);
+  const password = getPasswordForPasscode(passcode);
   try {
-    return await signInWithEmailAndPassword(auth, email, passcode);
+    return await signInWithEmailAndPassword(auth, email, password);
   } catch (err: any) {
-    // If account doesn't exist yet, create it with this passcode
-    // Note: Some Firebase versions return invalid-credential for both wrong pass and missing user
+    // If account doesn't exist yet, create it with this password
     if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
       try {
-        return await createUserWithEmailAndPassword(auth, email, passcode);
+        return await createUserWithEmailAndPassword(auth, email, password);
       } catch (createErr) {
-        // If creation fails it might already exist but password was wrong
         throw createErr;
       }
     }
