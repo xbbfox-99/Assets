@@ -21,6 +21,8 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { BatchHistoryList } from './components/BatchHistoryList';
 import { Asset, Liability, Investment } from './types';
 
+import { seedDemoData } from './lib/seed';
+
 function AppContent() {
   const { user } = useAuth();
   const { assets, liabilities, investments, reminders, loading } = useData();
@@ -29,8 +31,25 @@ function AppContent() {
   const [editingItems, setEditingItems] = useState<(Asset | Liability | Investment)[] | null>(null);
   const [addType, setAddType] = useState('asset');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   if (!user) return <Login />;
+
+  const isTestUser = user.email?.startsWith('test@');
+
+  const handleSeed = async () => {
+    if (!user || isSeeding) return;
+    setIsSeeding(true);
+    try {
+      await seedDemoData(user.uid);
+      alert('示範資料已生成');
+    } catch (err) {
+      console.error(err);
+      alert('生成失敗');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const handleDelete = async (id: string, path: string, skipConfirm = false) => {
     if (!skipConfirm && !window.confirm('確定要刪除此項目嗎？')) return;
@@ -129,10 +148,20 @@ function AppContent() {
                   </div>
                 )}
                 <div>
-                  <p className="text-sm font-medium text-wabi-ink">{user.displayName || '同步帳戶'}</p>
-                  <p className="text-xs text-wabi-stone">跨裝置同步進行中</p>
+                  <p className="text-sm font-medium text-wabi-ink">{isTestUser ? '測試演示帳戶' : (user.displayName || '同步帳戶')}</p>
+                  <p className="text-xs text-wabi-stone">{isTestUser ? '僅供演示使用' : '跨裝置同步進行中'}</p>
                 </div>
               </div>
+
+              {isTestUser && (
+                <button 
+                  onClick={handleSeed}
+                  disabled={isSeeding}
+                  className="w-full py-4 bg-wabi-accent/5 text-wabi-ink text-[10px] font-sans uppercase tracking-[0.2em] rounded-2xl border border-wabi-accent/10 hover:bg-wabi-accent/10 transition-colors"
+                >
+                  {isSeeding ? '正在生成...' : '生成示範歷史資料 (Demo Data)'}
+                </button>
+              )}
 
               <button 
                 onClick={logout}

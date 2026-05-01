@@ -14,7 +14,8 @@ export const Login: React.FC = () => {
     const val = e.target.value.toUpperCase();
     setPasscode(val);
     
-    if (val === 'HAERIN') {
+    const allowedPasscodes = ['HAERIN', 'TEST'];
+    if (allowedPasscodes.includes(val)) {
       setIsUnlocked(true);
       setError(false);
       setLoading(true);
