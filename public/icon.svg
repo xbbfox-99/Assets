@@ -1,0 +1,6 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="100" fill="#f8f9fa"/>
+  <path d="M150 150 L362 150 L362 362 L150 362 Z" fill="none" stroke="#333" stroke-width="20"/>
+  <line x1="150" y1="256" x2="362" y2="256" stroke="#333" stroke-width="10"/>
+  <text x="256" y="450" font-family="sans-serif" font-size="40" text-anchor="middle" fill="#333">WabiBalance</text>
+</svg>
