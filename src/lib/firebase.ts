@@ -83,8 +83,9 @@ const getEmailForPasscode = (passcode: string) => {
 const getPasswordForPasscode = (passcode: string) => passcode.length >= 6 ? passcode : passcode.padEnd(6, '0');
 
 export const loginWithPasscode = async (passcode: string) => {
-  const email = getEmailForPasscode(passcode);
-  const password = getPasswordForPasscode(passcode);
+  const normalizedPasscode = passcode.toUpperCase();
+  const email = getEmailForPasscode(normalizedPasscode);
+  const password = getPasswordForPasscode(normalizedPasscode);
   try {
     return await signInWithEmailAndPassword(auth, email, password);
   } catch (err: any) {
