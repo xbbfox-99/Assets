@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Asset, Liability, Investment } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, CheckSquare, Square, Filter } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Bar, CartesianGrid } from 'recharts';
+import { TrendingUp, CheckSquare, Square, Filter, BarChart3, Activity } from 'lucide-react';
 
 interface AssetAnalysisProps {
   assets: Asset[];
@@ -11,19 +11,22 @@ interface AssetAnalysisProps {
 }
 
 export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilities, investments }) => {
-  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [excludedKeys, setExcludedKeys] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
-  // Helper to check if item is included
-  const isIncluded = (item: { id: string }) => !excludedIds.has(item.id);
+  // Use Name + Category as a unique key for filtering across history
+  const getItemKey = (item: any) => `${item.name}|${item.category}`;
 
-  const toggleItem = (id: string) => {
-    setExcludedIds(prev => {
+  // Helper to check if item is included
+  const isIncluded = (item: any) => !excludedKeys.has(getItemKey(item));
+
+  const toggleItem = (key: string) => {
+    setExcludedKeys(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(id);
+        next.add(key);
       }
       return next;
     });
@@ -66,6 +69,36 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
   };
 
   const trendData = getTrendData();
+  const performanceData = (() => {
+    const includedInvestments = investments.filter(isIncluded);
+    if (includedInvestments.length === 0) return [];
+
+    const groupedByTs: { [key: number]: { ts: number, date: string, cost: number, value: number } } = {};
+
+    includedInvestments.forEach(inv => {
+      const dateObj = inv.updatedAt?.toDate ? inv.updatedAt.toDate() : new Date(inv.updatedAt);
+      const midnight = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+      const dateStr = dateObj.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+
+      if (!groupedByTs[midnight]) {
+        groupedByTs[midnight] = { ts: midnight, date: dateStr, cost: 0, value: 0 };
+      }
+
+      const rate = inv.exchangeRate || 1;
+      const cost = inv.avgCost * inv.shares * rate;
+      const value = inv.marketPrice * inv.shares * rate;
+
+      groupedByTs[midnight].cost += cost;
+      groupedByTs[midnight].value += value;
+    });
+
+    const sortedData = Object.values(groupedByTs).sort((a, b) => a.ts - b.ts);
+    return sortedData.map(d => ({
+      ...d,
+      profit: d.value - d.cost,
+      profitPct: d.cost > 0 ? ((d.value - d.cost) / d.cost * 100) : 0
+    }));
+  })();
 
   // 2. Asset Allocation Data (Latest snapshot)
   const getAllocationData = () => {
@@ -132,7 +165,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
         >
           <Filter size={10} />
           {showFilters ? '隱藏篩選' : '篩選項目'}
-          {excludedIds.size > 0 && <span className="ml-1 px-1 bg-wabi-accent text-white rounded-full leading-none py-0.5">{excludedIds.size}</span>}
+          {excludedKeys.size > 0 && <span className="ml-1 px-1 bg-wabi-accent text-white rounded-full leading-none py-0.5">{excludedKeys.size}</span>}
         </button>
       </div>
 
@@ -147,27 +180,44 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
             <div className="bg-wabi-paper p-5 rounded-3xl border border-wabi-accent/10 shadow-sm space-y-4">
               <p className="text-[10px] text-wabi-stone uppercase tracking-widest">Include in calculation / 納入計算項目</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {[...assets, ...investments, ...liabilities].map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => toggleItem(item.id)}
-                    className="flex items-center gap-3 p-2 rounded-xl border border-wabi-accent/5 hover:bg-wabi-bg transition-colors text-left"
-                  >
-                    {isIncluded(item) ? (
-                      <CheckSquare size={14} className="text-wabi-ink shrink-0" />
-                    ) : (
-                      <Square size={14} className="text-wabi-stone shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className={`text-[10px] font-medium truncate ${isIncluded(item) ? 'text-wabi-ink' : 'text-wabi-stone line-through opacity-50'}`}>
-                        {item.name}
-                      </p>
-                      <p className="text-[8px] text-wabi-stone uppercase tracking-tighter">
-                        {categoryLabels[item.category] || item.category}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                {(() => {
+                  const uniqueItems: any[] = [];
+                  const seenKeys = new Set<string>();
+                  
+                  [...assets, ...investments, ...liabilities].forEach(item => {
+                    const key = getItemKey(item);
+                    if (!seenKeys.has(key)) {
+                      seenKeys.add(key);
+                      uniqueItems.push(item);
+                    }
+                  });
+
+                  return uniqueItems.map(item => {
+                    const key = getItemKey(item);
+                    const included = isIncluded(item);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleItem(key)}
+                        className="flex items-center gap-3 p-2 rounded-xl border border-wabi-accent/5 hover:bg-wabi-bg transition-colors text-left"
+                      >
+                        {included ? (
+                          <CheckSquare size={14} className="text-wabi-ink shrink-0" />
+                        ) : (
+                          <Square size={14} className="text-wabi-stone shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className={`text-[10px] font-medium truncate ${included ? 'text-wabi-ink' : 'text-wabi-stone line-through opacity-50'}`}>
+                            {item.name}
+                          </p>
+                          <p className="text-[8px] text-wabi-stone uppercase tracking-tighter">
+                            {categoryLabels[item.category] || item.category}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </motion.div>
@@ -288,6 +338,115 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                         <TrendingUp size={20} className="opacity-20" />
                     </div>
                     <span>尚無足夠數據生成走勢圖表</span>
+                </div>
+            )}
+        </div>
+      </motion.div>
+
+      {/* Investment Analysis Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-wabi-paper p-5 rounded-3xl border border-wabi-accent/10 shadow-sm space-y-6"
+      >
+        <div className="flex justify-between items-end">
+            <div className="space-y-0.5">
+                <p className="text-[10px] text-wabi-stone uppercase tracking-widest">Investment Performance / 投資成本與損益推移</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-xl font-serif text-wabi-ink tabular-nums">
+                    {formatCurrency(performanceData.length > 0 ? performanceData[performanceData.length - 1].profit : 0)}
+                  </p>
+                  <span className={`text-[10px] font-bold ${(performanceData.length > 0 && performanceData[performanceData.length - 1].profit >= 0) ? 'text-wabi-up' : 'text-red-500'}`}>
+                    {performanceData.length > 0 ? (performanceData[performanceData.length - 1].profitPct.toFixed(2) + '%') : '0.00%'}
+                  </span>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-wabi-stone bg-opacity-30" />
+                  <span className="text-[8px] text-wabi-stone uppercase tracking-tighter">Cost</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-wabi-ink" />
+                  <span className="text-[8px] text-wabi-stone uppercase tracking-tighter">Market Value</span>
+                </div>
+            </div>
+        </div>
+
+        <div className="h-[220px] w-full">
+            {performanceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <XAxis 
+                            dataKey="date" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 9, fill: '#7A7A7A' }}
+                            dy={10}
+                        />
+                        <YAxis hide={true} />
+                        <Tooltip 
+                            content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                        <div className="bg-wabi-paper p-3 border border-wabi-accent/10 rounded-2xl shadow-xl space-y-2">
+                                            <p className="text-[10px] text-wabi-stone font-medium mb-1">{label}</p>
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-[10px] text-wabi-stone uppercase tracking-tighter">投資成本</span>
+                                                    <span className="text-[10px] font-medium text-wabi-ink tabular-nums">{formatCurrency(data.cost)}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-[10px] text-wabi-stone uppercase tracking-tighter">市場價值</span>
+                                                    <span className="text-[10px] font-medium text-wabi-ink tabular-nums">{formatCurrency(data.value)}</span>
+                                                </div>
+                                                <div className="pt-1 border-t border-wabi-bg flex items-center justify-between gap-4">
+                                                    <span className="text-[10px] font-bold text-wabi-ink uppercase tracking-tighter">累積損益</span>
+                                                    <span className={`text-[10px] font-bold tabular-nums ${data.profit >= 0 ? 'text-wabi-up' : 'text-red-500'}`}>
+                                                        {formatCurrency(data.profit)} ({data.profitPct.toFixed(2)}%)
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                        <Area 
+                            type="monotone" 
+                            dataKey="cost" 
+                            fill="#EDEDED" 
+                            fillOpacity={0.4}
+                            stroke="#D1D1D1" 
+                            strokeWidth={1}
+                            strokeDasharray="4 4"
+                        />
+                        <Line 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke="#1A1A1A" 
+                            strokeWidth={2} 
+                            dot={{ r: 2, fill: "#1A1A1A" }}
+                            activeDot={{ r: 4 }}
+                        />
+                        <Bar 
+                          dataKey="profit" 
+                          fillOpacity={0.3}
+                        >
+                          {performanceData.map((entry, index) => (
+                            <Cell key={`profit-cell-${index}`} fill={entry.profit >= 0 ? "#059669" : "#E11D48"} />
+                          ))}
+                        </Bar>
+                    </ComposedChart>
+                </ResponsiveContainer>
+            ) : (
+                <div className="h-full flex flex-col items-center justify-center text-wabi-stone text-xs italic gap-4">
+                    <div className="w-12 h-12 rounded-full border border-dashed border-wabi-accent/30 flex items-center justify-center">
+                        <Activity size={20} className="opacity-20" />
+                    </div>
+                    <span>尚無投資部位數據進行分析</span>
                 </div>
             )}
         </div>

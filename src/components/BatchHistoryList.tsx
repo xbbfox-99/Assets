@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Asset, Liability, Investment } from '../types';
-import { Trash2, Calendar, Check, X } from 'lucide-react';
+import { Trash2, Calendar, Check, X, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BatchHistoryListProps {
@@ -9,6 +9,7 @@ interface BatchHistoryListProps {
   type: 'asset' | 'liability' | 'investment';
   onDeleteBatch: (items: (Asset | Liability | Investment)[]) => void;
   onEditBatch: (items: (Asset | Liability | Investment)[]) => void;
+  onDuplicateBatch: (items: (Asset | Liability | Investment)[]) => void;
 }
 
 export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({ 
@@ -16,7 +17,8 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
   items, 
   type, 
   onDeleteBatch,
-  onEditBatch
+  onEditBatch,
+  onDuplicateBatch
 }) => {
   const [confirmingTs, setConfirmingTs] = useState<number | null>(null);
 
@@ -129,6 +131,17 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                   </div>
                   
                   <div className="flex items-center gap-2 relative z-20">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicateBatch(batch.items);
+                      }}
+                      className="p-2 text-wabi-stone hover:text-wabi-ink hover:bg-wabi-bg rounded-full transition-all"
+                      title="複製此紀錄"
+                    >
+                      <Copy size={18} />
+                    </button>
+
                     <AnimatePresence mode="wait">
                       {isConfirming ? (
                         <motion.div 

@@ -10,6 +10,7 @@ import { getExchangeRate } from '../lib/exchangeRate';
 interface BatchEntryProps {
   onClose: () => void;
   initialItems?: (Asset | Liability | Investment)[];
+  isClone?: boolean;
 }
 
 // Internal component for Draggable items with restricted handle
@@ -219,7 +220,7 @@ const BankItem: React.FC<{
   );
 };
 
-export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems }) => {
+export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, isClone }) => {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [institutions, setInstitutions] = useState<any[]>([]);
@@ -835,7 +836,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
 
         // If it's an existing item (id doesn't start with 'item-'), update it
         // Or if we are in edit mode and it was one of the initial items
-        const isExisting = isEditing && initialItems?.some(ii => ii.id === item.id);
+        const isExisting = !isClone && isEditing && initialItems?.some(ii => ii.id === item.id);
         
         if (isExisting) {
           let path = (item as any)._collection;
@@ -871,7 +872,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
         <div className="flex items-center justify-between mb-4">
           <div className="space-y-0.5">
             <p className="text-[9px] text-wabi-stone tracking-[0.3em] uppercase">Step {currentInstIndex + 1} of {institutions.length}</p>
-            <h2 className="text-xl font-serif text-wabi-ink">{isEditing ? '編輯歷史紀錄' : '本期資料填報'}</h2>
+            <h2 className="text-xl font-serif text-wabi-ink">{isClone ? '從紀錄複製並新增' : (isEditing ? '編輯歷史紀錄' : '本期資料填報')}</h2>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-white/5 transition-colors border border-transparent hover:border-wabi-accent/20">
@@ -1195,7 +1196,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems })
           onClick={handleSaveAll}
           className="w-auto px-12 py-4 bg-wabi-ink text-wabi-bg rounded-full text-xs font-bold uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
-          {loading ? '儲存中...' : (isEditing ? '更新此份紀錄' : '確認儲存全部')}
+          {loading ? '儲存中...' : (isClone ? '確認複製並儲存' : (isEditing ? '更新此份紀錄' : '確認儲存全部'))}
         </button>
       </div>
     </motion.div>

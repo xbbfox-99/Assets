@@ -29,6 +29,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAdd, setShowAdd] = useState(false);
   const [editingItems, setEditingItems] = useState<(Asset | Liability | Investment)[] | null>(null);
+  const [isClone, setIsClone] = useState(false);
   const [addType, setAddType] = useState('asset');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -108,9 +109,22 @@ function AppContent() {
     }
   };
 
+  const handleDuplicateBatch = (items: (Asset | Liability | Investment)[]) => {
+    // To duplicate, we strip IDs and change the date to today
+    const duplicatedItems = items.map(item => ({
+      ...item,
+      id: "item-" + Math.random().toString(36).substr(2, 9),
+      updatedAt: new Date()
+    }));
+    setEditingItems(duplicatedItems as any);
+    setIsClone(true);
+    setShowAdd(true);
+  };
+
   const handlePlusClick = () => {
     setAddType(activeTab === 'liabilities' ? 'liability' : (activeTab === 'investments' || activeTab === 'analysis' ? 'investment' : 'asset'));
     setEditingItems(null);
+    setIsClone(false);
     setShowAdd(true);
   };
 
@@ -128,8 +142,10 @@ function AppContent() {
             onDeleteBatch={(items) => handleDeleteBatch(items)} 
             onEditBatch={(items) => {
               setEditingItems(items);
+              setIsClone(false);
               setShowAdd(true);
             }}
+            onDuplicateBatch={handleDuplicateBatch}
           />
         );
       case 'analysis':
@@ -191,9 +207,11 @@ function AppContent() {
         {showAdd && (
           <BatchEntry 
             initialItems={editingItems}
+            isClone={isClone}
             onClose={() => {
               setShowAdd(false);
               setEditingItems(null);
+              setIsClone(false);
             }} 
           />
         )}
