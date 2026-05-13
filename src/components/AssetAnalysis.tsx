@@ -184,7 +184,9 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                   const uniqueItems: any[] = [];
                   const seenKeys = new Set<string>();
                   
-                  [...assets, ...investments, ...liabilities].forEach(item => {
+                  [...assets, ...investments, ...liabilities]
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-TW'))
+                    .forEach(item => {
                     const key = getItemKey(item);
                     if (!seenKeys.has(key)) {
                       seenKeys.add(key);

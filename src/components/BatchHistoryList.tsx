@@ -38,17 +38,22 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
     return date.getTime();
   };
 
-  // Group items by exact timestamp
+  // Group items by date (YYYY-MM-DD)
   interface BatchGroup {
-    timestamp: any;
+    dateStr: string;
+    timestamp: any; // Keep one for sorting
     total: number;
     items: (Asset | Liability | Investment)[];
   }
 
   const groups = items.reduce((acc, item) => {
     const ts = getExactTimestamp(item.updatedAt);
-    if (!acc[ts]) {
-      acc[ts] = {
+    const dateObj = item.updatedAt?.toDate ? item.updatedAt.toDate() : new Date(item.updatedAt);
+    const dateStr = dateObj.toISOString().split('T')[0];
+
+    if (!acc[dateStr]) {
+      acc[dateStr] = {
+        dateStr,
         timestamp: item.updatedAt,
         total: 0,
         items: []
@@ -66,19 +71,17 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
     }
     
     if (isLiability) {
-      acc[ts].total -= amount;
+      acc[dateStr].total -= amount;
     } else {
-      acc[ts].total += amount;
+      acc[dateStr].total += amount;
     }
-    acc[ts].items.push(item);
+    acc[dateStr].items.push(item);
     return acc;
-  }, {} as Record<number, BatchGroup>);
+  }, {} as Record<string, BatchGroup>);
 
   // Convert to array and sort by date descending
   const sortedBatches = (Object.values(groups) as BatchGroup[]).sort((a, b) => {
-    const timeA = getExactTimestamp(a.timestamp);
-    const timeB = getExactTimestamp(b.timestamp);
-    return timeB - timeA;
+    return b.dateStr.localeCompare(a.dateStr);
   });
 
   return (
@@ -98,12 +101,11 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
           </div>
         ) : (
           sortedBatches.map((batch, idx) => {
-            const ts = getExactTimestamp(batch.timestamp);
-            const isConfirming = confirmingTs === ts;
+            const isConfirming = confirmingTs === idx;
 
             return (
               <motion.div
-                key={ts}
+                key={batch.dateStr}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
@@ -179,7 +181,7 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                           exit={{ opacity: 0, scale: 0.8 }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setConfirmingTs(ts);
+                            setConfirmingTs(idx);
                           }}
                           className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
                         >

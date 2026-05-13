@@ -42,7 +42,10 @@ export function useData() {
     }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/investments`));
 
     const unsubReminders = onSnapshot(reminderQuery, (snapshot) => {
-      setReminders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reminder)));
+      const sortedReminders = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Reminder))
+        .sort((a, b) => Number(a.day || 0) - Number(b.day || 0));
+      setReminders(sortedReminders);
     }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/reminders`));
 
     setLoading(false);
