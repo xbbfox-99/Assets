@@ -34,7 +34,7 @@ export const EntryList: React.FC<EntryListProps> = ({ title, items, type, onDele
       <div className="space-y-3">
         {items.length === 0 ? (
           <div className="py-20 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full border border-dashed border-wabi-accent/30 mx-auto flex items-center justify-center text-wabi-accent/30">
+            <div className="w-12 h-12 rounded-full border border-dashed border-wabi-accent/60 mx-auto flex items-center justify-center text-wabi-accent/70">
               <MoreHorizontal />
             </div>
             <p className="text-xs text-wabi-stone font-sans">尚無資料，請點擊上方按鈕新增</p>
@@ -63,10 +63,10 @@ export const EntryList: React.FC<EntryListProps> = ({ title, items, type, onDele
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => onEdit(item)}
-                  className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/5 flex items-center justify-between group cursor-pointer hover:border-wabi-accent/20 transition-all shadow-sm hover:shadow-md"
+                  className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/40 flex items-center justify-between group cursor-pointer hover:border-wabi-accent/80 transition-all shadow-sm hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-wabi-up/15 text-wabi-up font-bold' : type === 'liability' ? 'bg-wabi-down/15 text-wabi-down font-bold' : 'bg-wabi-up/15 text-wabi-up font-bold'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-wabi-up/20 text-wabi-up font-bold' : type === 'liability' ? 'bg-wabi-down/20 text-wabi-down font-bold' : 'bg-wabi-up/20 text-wabi-up font-bold'}`}>
                       {type === 'asset' || type === 'investment' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     </div>
                     <div>

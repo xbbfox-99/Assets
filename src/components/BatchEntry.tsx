@@ -888,14 +888,14 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
       className="fixed inset-0 z-[100] bg-wabi-bg flex flex-col max-w-md mx-auto"
     >
       {/* Header */}
-      <div className="px-6 pt-10 pb-4 bg-wabi-bg/95 backdrop-blur-md sticky top-0 z-50 border-b border-wabi-accent/5">
+      <div className="px-6 pt-10 pb-4 bg-wabi-bg/95 backdrop-blur-md sticky top-0 z-50 border-b border-wabi-accent/35">
         <div className="flex items-center justify-between mb-4">
           <div className="space-y-0.5">
             <p className="text-[9px] text-wabi-stone tracking-[0.3em] uppercase">Step {currentInstIndex + 1} of {institutions.length}</p>
             <h2 className="text-xl font-serif text-wabi-ink">{isClone ? '從紀錄複製並新增' : (isEditing ? '編輯歷史紀錄' : '本期資料填報')}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-wabi-accent/10 transition-colors border border-transparent hover:border-wabi-accent/20">
+            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-wabi-accent/20 transition-colors border border-transparent hover:border-wabi-accent/40">
               <X size={18} />
             </button>
           </div>
@@ -908,13 +908,13 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
               type="date" 
               value={date}
               onChange={e => setDate(e.target.value)}
-              className="w-full bg-wabi-paper border border-wabi-accent/20 rounded-xl px-3 py-2 text-[11px] text-wabi-ink focus:outline-none shadow-sm"
+              className="w-full bg-wabi-paper border border-wabi-accent/45 rounded-xl px-3 py-2 text-[11px] text-wabi-ink focus:outline-none shadow-sm"
             />
           </div>
           <button 
             onClick={fetchPrices}
             disabled={isFetching}
-            className="px-3 py-2 bg-wabi-paper rounded-xl text-wabi-ink border border-wabi-accent/5 flex items-center gap-1.5 hover:bg-wabi-accent/10 transition-colors disabled:opacity-50 mt-3"
+            className="px-3 py-2 bg-wabi-paper rounded-xl text-wabi-ink border border-wabi-accent/40 flex items-center gap-1.5 hover:bg-wabi-accent/20 transition-colors disabled:opacity-50 mt-3"
           >
             <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
             <span className="text-[10px] font-bold">市價</span>
@@ -940,7 +940,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
                 className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all duration-300 pointer-events-auto cursor-pointer ${
                   i === currentInstIndex 
                     ? 'bg-wabi-ink text-wabi-bg shadow-sm ring-1 ring-wabi-ink' 
-                    : 'bg-wabi-paper text-wabi-stone border border-wabi-accent/10 hover:bg-wabi-accent/20'
+                    : 'bg-wabi-paper text-wabi-stone border border-wabi-accent/45 hover:bg-wabi-accent/60'
                 }`}
               >
                 {inst.name}
@@ -950,7 +950,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
           <div className="flex-shrink-0">
             <button 
               onClick={() => setIsAddingBank(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-stone bg-wabi-paper hover:bg-wabi-accent/10 transition-all border border-wabi-accent/5 border-dashed"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-stone bg-wabi-paper hover:bg-wabi-accent/20 transition-all border border-wabi-accent/40 border-dashed"
               title="新增分類"
             >
               <Plus size={14} />

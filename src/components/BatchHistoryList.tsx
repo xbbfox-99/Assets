@@ -110,11 +110,11 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => onEditBatch(batch.items)}
-                className="bg-wabi-paper rounded-2xl border border-wabi-accent/5 flex flex-col group overflow-hidden relative cursor-pointer hover:border-wabi-accent/20 transition-all shadow-sm hover:shadow-md"
+                className="bg-wabi-paper rounded-2xl border border-wabi-accent/40 flex flex-col group overflow-hidden relative cursor-pointer hover:border-wabi-accent/85 transition-all shadow-sm hover:shadow-md"
               >
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-wabi-bg flex items-center justify-center text-wabi-stone border border-wabi-accent/5">
+                    <div className="w-10 h-10 rounded-full bg-wabi-bg flex items-center justify-center text-wabi-stone border border-wabi-accent/30">
                       <Calendar size={18} strokeWidth={1.5} />
                     </div>
                     <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                         <p className="text-[10px] font-sans text-wabi-stone uppercase tracking-widest leading-none mb-1">記錄日期</p>
                         <p className="text-base font-serif text-wabi-ink">{formatDate(batch.timestamp)}</p>
                       </div>
-                      <div className="w-px h-8 bg-wabi-accent/10 mx-1" />
+                      <div className="w-px h-8 bg-wabi-accent/40 mx-1" />
                       <div>
                         <p className="text-[10px] font-sans text-wabi-stone uppercase tracking-widest leading-none mb-1">淨資產</p>
                         <p className={`text-base font-bold tabular-nums ${batch.total >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>

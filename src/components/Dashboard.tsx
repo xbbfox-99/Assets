@@ -95,7 +95,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           <div className="flex items-center gap-2">
             <p className="text-[10px] text-wabi-stone uppercase tracking-[0.2em]">Current Balance</p>
             {latestDate && (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-wabi-paper rounded-full border border-wabi-accent/5">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-wabi-paper rounded-full border border-wabi-accent/40">
                 <Clock size={8} className="text-wabi-stone" />
                 <span className="text-[8px] font-bold text-wabi-stone uppercase tracking-widest">
                   {(() => {
@@ -113,8 +113,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           onClick={() => setIncludeCSC(!includeCSC)}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
             includeCSC 
-              ? 'bg-wabi-accent/20 border-wabi-accent/40 text-wabi-ink' 
-              : 'bg-wabi-paper border-wabi-accent/10 text-wabi-stone'
+              ? 'bg-wabi-accent/40 border-wabi-accent text-wabi-ink font-semibold' 
+              : 'bg-wabi-paper border-wabi-accent/60 text-wabi-stone hover:border-wabi-accent'
           }`}
         >
           <span className="text-[10px] font-medium tracking-wider">計入中鋼信託</span>
@@ -126,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-wabi-paper p-5 rounded-3xl border border-wabi-accent/10 shadow-sm space-y-4"
+        className="bg-wabi-paper p-5 rounded-3xl border border-wabi-accent/45 shadow-sm space-y-4"
       >
         <div className="flex justify-between items-start">
           <div className="space-y-0.5">
@@ -139,7 +139,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           </div>
         </div>
 
-        <div className="pt-4 border-t border-wabi-bg flex justify-between gap-4">
+        <div className="pt-4 border-t border-wabi-accent/40 flex justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-[10px] text-wabi-stone uppercase tracking-widest">
               <TrendingUp size={10} className="text-wabi-up" />
@@ -161,25 +161,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
       <div className="space-y-3">
         <h3 className="text-xs font-serif text-wabi-ink px-1">財務分析 Insights</h3>
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
-            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">現金比率</p>
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/40 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider font-semibold">現金比率</p>
             <p className="text-sm font-medium text-wabi-ink">{cashRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
-              <div className="h-full bg-wabi-up/80" style={{ width: `${Math.min(cashRatio, 100)}%` }} />
+            <div className="w-full h-1 bg-wabi-accent/40 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-up" style={{ width: `${Math.min(cashRatio, 100)}%` }} />
             </div>
           </div>
-          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
-            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">投資比率</p>
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/40 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider font-semibold">投資比率</p>
             <p className="text-sm font-medium text-wabi-ink">{investmentRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
-              <div className="h-full bg-wabi-ink/40" style={{ width: `${Math.min(investmentRatio, 100)}%` }} />
+            <div className="w-full h-1 bg-wabi-accent/40 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-ink/80" style={{ width: `${Math.min(investmentRatio, 100)}%` }} />
             </div>
           </div>
-          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
-            <p className="text-[8px] text-wabi-stone uppercase tracking-wider">負債比率</p>
+          <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/40 space-y-1.5">
+            <p className="text-[8px] text-wabi-stone uppercase tracking-wider font-semibold">負債比率</p>
             <p className="text-sm font-medium text-wabi-ink">{debtRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
-              <div className="h-full bg-wabi-down/80" style={{ width: `${Math.min(debtRatio, 100)}%` }} />
+            <div className="w-full h-1 bg-wabi-accent/40 rounded-full overflow-hidden">
+              <div className="h-full bg-wabi-down" style={{ width: `${Math.min(debtRatio, 100)}%` }} />
             </div>
           </div>
         </div>
@@ -197,9 +197,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
             <p className="text-xs text-wabi-stone italic px-1 font-sans">暫無待處理帳單</p>
           ) : (
             reminders.slice(0, 3).map(reminder => (
-              <div key={reminder.id} className="bg-wabi-paper px-3 py-2 rounded-xl border border-wabi-accent/5 flex items-center justify-between">
+              <div key={reminder.id} className="bg-wabi-paper px-3 py-2 rounded-xl border border-wabi-accent/40 flex items-center justify-between">
                 <span className="text-[11px] text-wabi-ink">{reminder.name}</span>
-                <span className="text-[9px] text-wabi-stone bg-wabi-bg px-2 py-0.5 rounded-full">{reminder.day}</span>
+                <span className="text-[9px] text-wabi-stone bg-wabi-bg border border-wabi-accent/20 px-2 py-0.5 rounded-full">{reminder.day}</span>
               </div>
             ))
           )}

@@ -5,13 +5,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Noto Serif TC", serif;
   
-  --color-wabi-bg: #EFECE6; /* Slightly deeper soft warm clay background */
-  --color-wabi-ink: #1F1C18; /* Even deeper, rich warm ink */
-  --color-wabi-stone: #6B665E; /* Deeper warm stone gray (increases readability of metadata) */
-  --color-wabi-paper: #FFFFFF; /* Clean white for cards */
-  --color-wabi-accent: #D1C9BE; /* Deeper and warmer border/accent color for more prominent lines */
-  --color-wabi-up: #B23A30; /* Deeper, richer Taiwanese stock Red (漲 / Up / Profit) */
-  --color-wabi-down: #2D6B3F; /* Deeper, richer Taiwanese stock Green (跌 / Down / Liabilities) */
+  --color-wabi-bg: #E6E1D6; /* Warmer, slightly deeper clay background for better contrast with white cards */
+  --color-wabi-ink: #191613; /* Deep, rich premium warm charcoal */
+  --color-wabi-stone: #4D4943; /* Deeper warm stone gray to make secondary text highly readable */
+  --color-wabi-paper: #FFFFFF; /* Pure clean white for cards to pop against deep background */
+  --color-wabi-accent: #C7BDB0; /* Richer, deeper border accent color for solid structure */
+  --color-wabi-up: #D2261E; /* Deeper, vibrant Taiwanese Stock Red for Assets/Profit */
+  --color-wabi-down: #1E7E34; /* Richer, vibrant Taiwanese Stock Green for Liabilities/Losses */
 }
 
 @layer base {
