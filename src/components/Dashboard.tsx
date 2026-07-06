@@ -164,21 +164,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
             <p className="text-[8px] text-wabi-stone uppercase tracking-wider">現金比率</p>
             <p className="text-sm font-medium text-wabi-ink">{cashRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
               <div className="h-full bg-wabi-up/80" style={{ width: `${Math.min(cashRatio, 100)}%` }} />
             </div>
           </div>
           <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
             <p className="text-[8px] text-wabi-stone uppercase tracking-wider">投資比率</p>
             <p className="text-sm font-medium text-wabi-ink">{investmentRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
               <div className="h-full bg-wabi-ink/40" style={{ width: `${Math.min(investmentRatio, 100)}%` }} />
             </div>
           </div>
           <div className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/10 space-y-1.5">
             <p className="text-[8px] text-wabi-stone uppercase tracking-wider">負債比率</p>
             <p className="text-sm font-medium text-wabi-ink">{debtRatio.toFixed(1)}%</p>
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-wabi-accent/20 rounded-full overflow-hidden">
               <div className="h-full bg-wabi-down/80" style={{ width: `${Math.min(debtRatio, 100)}%` }} />
             </div>
           </div>

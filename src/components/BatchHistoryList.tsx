@@ -125,7 +125,7 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                       <div className="w-px h-8 bg-wabi-accent/10 mx-1" />
                       <div>
                         <p className="text-[10px] font-sans text-wabi-stone uppercase tracking-widest leading-none mb-1">淨資產</p>
-                        <p className={`text-base font-bold tabular-nums ${batch.total >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
+                        <p className={`text-base font-bold tabular-nums ${batch.total >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>
                           {formatCurrency(batch.total)}
                         </p>
                       </div>
@@ -159,7 +159,7 @@ export const BatchHistoryList: React.FC<BatchHistoryListProps> = ({
                               onDeleteBatch(batch.items);
                               setConfirmingTs(null);
                             }}
-                            className="bg-red-500 text-white px-3 py-1.5 rounded-full text-[10px] font-bold shadow-sm hover:bg-red-600 transition-colors whitespace-nowrap"
+                            className="bg-rose-500 text-white px-3 py-1.5 rounded-full text-[10px] font-bold shadow-sm hover:bg-rose-600 transition-colors whitespace-nowrap"
                           >
                             確定刪除
                           </button>

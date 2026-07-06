@@ -61,9 +61,9 @@ const BankItem: React.FC<{
   return (
     <motion.div 
       layout
-      className="group/item space-y-2 pb-2 border-b border-wabi-accent/5 last:border-0 last:pb-0 bg-transparent relative"
+      className="group/item space-y-3 p-3.5 sm:p-4 rounded-2xl bg-wabi-bg/20 hover:bg-wabi-bg/40 border border-wabi-accent/10 hover:border-wabi-accent/30 transition-all relative"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           {/* SORT BUTTONS - NEW REPLACEMENT FOR DRAG HANDLE */}
           <div className="flex flex-col gap-0.5 sm:opacity-40 group-hover/item:opacity-100 transition-opacity">
@@ -91,8 +91,8 @@ const BankItem: React.FC<{
             }}
             className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all z-20 gap-2 ${
               confirmingDelete?.itemId === item.id 
-                ? 'bg-rose-900/80 text-white w-auto px-4 ring-1 ring-rose-500/50' 
-                : 'text-rose-400/40 hover:text-wabi-up hover:bg-wabi-up/10'
+                ? 'bg-rose-500/80 text-white w-auto px-4 ring-1 ring-rose-300' 
+                : 'text-rose-400/40 hover:text-wabi-up hover:bg-rose-50'
             }`}
           >
             <Trash2 size={confirmingDelete?.itemId === item.id ? 14 : 16} />
@@ -100,10 +100,10 @@ const BankItem: React.FC<{
               <span className="text-[10px] font-bold">確定移除？</span>
             )}
           </button>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-wabi-ink truncate">{item.name}</p>
-            <div className="flex items-center gap-2">
-              <p className="text-[9px] text-wabi-stone uppercase tracking-widest">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold text-wabi-ink truncate max-w-[160px] sm:max-w-[200px]">{item.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-1.5 py-0.5 text-[8px] font-mono font-medium tracking-wide bg-wabi-accent/60 text-wabi-stone rounded border border-wabi-accent/20 uppercase">
                 {item.symbol || (
                   item.category === 'saving' ? '資產' : 
                   item.category === 'foreign' ? '外幣資產' : 
@@ -111,9 +111,9 @@ const BankItem: React.FC<{
                   item.category === 'loan' ? '負債' : 
                   (item.type === 'asset' ? '資產' : '負債')
                 )}
-              </p>
+              </span>
               {(item.category === 'foreign' || item.type === 'investment') && (
-                <div className="flex bg-wabi-bg rounded-md p-0.5 border border-wabi-accent/5">
+                <div className="flex bg-wabi-bg rounded-md p-0.5 border border-wabi-accent/10">
                   {['TWD', 'USD', 'JPY', 'EUR'].map((curr) => (
                     <button
                       key={curr}
@@ -129,72 +129,80 @@ const BankItem: React.FC<{
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1 w-full sm:w-auto">
             {item.type !== 'investment' ? (
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex items-center bg-wabi-bg/35 px-3 py-1.5 rounded-xl border border-wabi-accent/15 focus-within:border-wabi-ink/60 transition-all shadow-sm w-full sm:w-auto">
                 <input
                   type="number"
                   placeholder="0"
                   value={amounts[item.id] || ''}
                   onChange={e => handleAmountChange(item.id, e.target.value)}
-                  className={`w-full sm:w-32 bg-transparent py-1 text-right font-serif text-lg text-wabi-ink focus:border-wabi-ink outline-none transition-colors tabular-nums border-b border-white/5`}
+                  className="w-full sm:w-32 bg-transparent text-right font-serif text-base text-wabi-ink outline-none transition-colors tabular-nums"
                 />
-                <span className="text-[10px] text-wabi-stone w-8 text-left">{currentCurrency}</span>
+                <span className="text-[10px] text-wabi-stone font-semibold ml-2 pl-2 border-l border-wabi-accent/20 w-8 text-left">{currentCurrency}</span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2 flex-grow sm:flex-grow-0 sm:flex sm:items-center sm:gap-4">
-                <div className="w-full sm:w-16">
-                  <p className="text-[8px] text-wabi-stone uppercase text-right">股數</p>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={investmentData[item.id]?.shares || ''}
-                    onChange={e => handleInvestmentChange(item.id, 'shares', e.target.value)}
-                    className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
-                  />
+              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                <div className="min-w-0">
+                  <p className="text-[8px] text-wabi-stone uppercase tracking-wider text-right pr-1 mb-0.5">股數 Shares</p>
+                  <div className="bg-wabi-bg/35 px-2 py-1.5 rounded-xl border border-wabi-accent/15 focus-within:border-wabi-ink/60 transition-all">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={investmentData[item.id]?.shares || ''}
+                      onChange={e => handleInvestmentChange(item.id, 'shares', e.target.value)}
+                      className="w-full bg-transparent text-right font-serif text-xs text-wabi-ink outline-none tabular-nums"
+                    />
+                  </div>
                 </div>
-                <div className="w-full sm:w-20">
-                  <p className="text-[8px] text-wabi-stone uppercase text-right">成本</p>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={investmentData[item.id]?.cost || ''}
-                    onChange={e => handleInvestmentChange(item.id, 'cost', e.target.value)}
-                    className="w-full bg-transparent py-1 text-right font-serif text-sm text-wabi-ink outline-none"
-                  />
+                <div className="min-w-0">
+                  <p className="text-[8px] text-wabi-stone uppercase tracking-wider text-right pr-1 mb-0.5">成本 Cost</p>
+                  <div className="bg-wabi-bg/35 px-2 py-1.5 rounded-xl border border-wabi-accent/15 focus-within:border-wabi-ink/60 transition-all">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={investmentData[item.id]?.cost || ''}
+                      onChange={e => handleInvestmentChange(item.id, 'cost', e.target.value)}
+                      className="w-full bg-transparent text-right font-serif text-xs text-wabi-ink outline-none tabular-nums"
+                    />
+                  </div>
                 </div>
-                <div className="w-full sm:w-20">
-                  <p className="text-[8px] text-wabi-stone uppercase text-right mx-1">市價({currentCurrency})</p>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={investmentData[item.id]?.price || ''}
-                    onChange={e => handleInvestmentChange(item.id, 'price', e.target.value)}
-                    className={`w-full bg-transparent py-1 text-right font-serif text-sm outline-none transition-colors ${item.symbol && marketPrices[item.symbol] ? 'text-wabi-accent font-bold' : 'text-wabi-ink'}`}
-                  />
+                <div className="min-w-0">
+                  <p className="text-[8px] text-wabi-stone uppercase tracking-wider text-right pr-1 mb-0.5 truncate">市價 Price</p>
+                  <div className="bg-wabi-bg/35 px-2 py-1.5 rounded-xl border border-wabi-accent/15 focus-within:border-wabi-ink/60 transition-all">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={investmentData[item.id]?.price || ''}
+                      onChange={e => handleInvestmentChange(item.id, 'price', e.target.value)}
+                      className={`w-full bg-transparent text-right font-serif text-xs outline-none transition-colors tabular-nums ${item.symbol && marketPrices[item.symbol] ? 'text-wabi-up font-bold' : 'text-wabi-ink'}`}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
           
           {currentCurrency !== 'TWD' && (
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:items-end gap-1 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-end gap-2">
                 <span className="text-[8px] text-wabi-stone uppercase tracking-widest flex items-center gap-1">
                   匯率 Rate
                   {isFetchingRate && <RefreshCw size={8} className="animate-spin" />}
                 </span>
-                <input
-                  type="number"
-                  step="0.0001"
-                  placeholder="1.0"
-                  value={currentExRate}
-                  onChange={e => handleExchangeRateChange(item.id, e.target.value)}
-                  className={`w-16 bg-wabi-bg px-2 py-0.5 text-right font-serif text-[10px] text-wabi-ink border-b border-wabi-accent/30 focus:border-wabi-ink outline-none transition-opacity ${isFetchingRate ? 'opacity-50' : 'opacity-100'}`}
-                />
+                <div className="bg-wabi-bg/35 px-2.5 py-1 rounded-xl border border-wabi-accent/15 focus-within:border-wabi-ink/60 transition-all">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="1.0"
+                    value={currentExRate}
+                    onChange={e => handleExchangeRateChange(item.id, e.target.value)}
+                    className={`w-16 bg-transparent text-right font-serif text-[10px] text-wabi-ink outline-none transition-opacity ${isFetchingRate ? 'opacity-50' : 'opacity-100'}`}
+                  />
+                </div>
               </div>
-              <p className="text-[10px] text-wabi-accent font-medium tabular-nums">
+              <p className="text-[10px] text-wabi-stone font-semibold tabular-nums text-right">
                 ≈ {new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(
                   (item.type === 'investment' 
                     ? (Number(investmentData[item.id]?.shares || 0) * Number(investmentData[item.id]?.price || 0))
@@ -207,12 +215,12 @@ const BankItem: React.FC<{
       </div>
       
       {pl && (
-        <div className="flex items-center justify-end gap-2 text-[10px]">
-          <span className="text-wabi-stone">本期損益:</span>
-          <div className={`flex items-center gap-1 font-medium ${pl.profit >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>
+        <div className="flex items-center justify-end gap-2 text-[10px] border-t border-wabi-accent/5 pt-1.5">
+          <span className="text-wabi-stone text-[8px] uppercase tracking-wider font-medium">本期損益 Profit/Loss:</span>
+          <div className={`flex items-center gap-1 font-bold ${pl.profit >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>
             {pl.profit >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
             <span>${Math.abs(pl.profit).toLocaleString()}</span>
-            <span className="opacity-60">({pl.percent.toFixed(2)}%)</span>
+            <span className="opacity-75">({pl.percent.toFixed(2)}%)</span>
           </div>
         </div>
       )}
@@ -298,14 +306,8 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
             });
             sInst.items = uniqueExistingItems;
 
-            const sItemIds = new Set(sInst.items.map((i: any) => i.id));
-            const sItemNames = new Set(sInst.items.map((i: any) => i.name.trim()));
-            if (defaultInst) {
-              const missingItems = defaultInst.items.filter(i => !sItemIds.has(i.id) && !sItemNames.has(i.name.trim()));
-              if (missingItems.length > 0) {
-                return { ...sInst, items: [...uniqueExistingItems, ...missingItems] };
-              }
-            }
+            // DO NOT automatically restore missing default items for existing institutions.
+            // If the user deleted an item from a bank, it should stay deleted.
             return { ...sInst, items: uniqueExistingItems };
           });
 
@@ -860,6 +862,22 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
     }
   };
 
+  if (!hasLoadedTemplates) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] bg-wabi-bg flex flex-col items-center justify-center max-w-md mx-auto"
+      >
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-8 h-8 border-2 border-wabi-ink border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-wabi-stone tracking-widest uppercase font-serif">資料讀取中 Loading...</p>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -875,7 +893,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
             <h2 className="text-xl font-serif text-wabi-ink">{isClone ? '從紀錄複製並新增' : (isEditing ? '編輯歷史紀錄' : '本期資料填報')}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-white/5 transition-colors border border-transparent hover:border-wabi-accent/20">
+            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-wabi-stone hover:bg-wabi-accent/10 transition-colors border border-transparent hover:border-wabi-accent/20">
               <X size={18} />
             </button>
           </div>
@@ -894,7 +912,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
           <button 
             onClick={fetchPrices}
             disabled={isFetching}
-            className="px-3 py-2 bg-wabi-paper rounded-xl text-wabi-ink border border-wabi-accent/5 flex items-center gap-1.5 hover:bg-white transition-colors disabled:opacity-50 mt-3"
+            className="px-3 py-2 bg-wabi-paper rounded-xl text-wabi-ink border border-wabi-accent/5 flex items-center gap-1.5 hover:bg-wabi-accent/10 transition-colors disabled:opacity-50 mt-3"
           >
             <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
             <span className="text-[10px] font-bold">市價</span>
@@ -930,7 +948,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
           <div className="flex-shrink-0">
             <button 
               onClick={() => setIsAddingBank(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-stone bg-wabi-paper hover:bg-white transition-all border border-wabi-accent/5 border-dashed"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-wabi-stone bg-wabi-paper hover:bg-wabi-accent/10 transition-all border border-wabi-accent/5 border-dashed"
               title="新增分類"
             >
               <Plus size={14} />
@@ -969,7 +987,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
                   <div className="space-y-4 pb-32">
                     <div className="flex items-center justify-between group/title">
                       <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-1 sm:opacity-0 group-hover/title:opacity-100 transition-opacity">
+                        <div className="flex flex-col gap-1 opacity-100 md:opacity-0 md:group-hover/title:opacity-100 transition-opacity">
                           <button onClick={() => moveInst(instIdx, 'up')} className="text-wabi-stone/30 hover:text-wabi-ink cursor-pointer">
                             <ChevronUp size={10} />
                           </button>
@@ -990,8 +1008,8 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
                             }}
                             className={`px-3 h-8 rounded-full flex items-center justify-center transition-all gap-2 ${
                               confirmingBankDelete === instIdx 
-                                ? 'bg-rose-900/80 text-white w-auto ring-1 ring-rose-500/50 opacity-100' 
-                                : 'text-rose-400/40 opacity-0 group-hover/title:opacity-100 hover:bg-wabi-up/10'
+                                ? 'bg-rose-500/80 text-white w-auto ring-1 ring-rose-300 opacity-100' 
+                                : 'text-rose-400/60 opacity-100 md:opacity-0 md:group-hover/title:opacity-100 hover:text-rose-600 hover:bg-rose-50'
                             }`}
                           >
                             <Trash2 size={confirmingBankDelete === instIdx ? 12 : 14} />

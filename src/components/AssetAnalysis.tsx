@@ -131,7 +131,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
 
   const allocationData = getAllocationData();
   const totalAllocationValue = allocationData.reduce((acc, curr) => acc + curr.value, 0);
-  const COLORS = ['#E11D48', '#059669', '#94A3B8', '#F59E0B', '#3B82F6', '#8B5CF6'];
+  const COLORS = ['#81A684', '#C47A70', '#8E8A83', '#E8E4DE', '#B5A99F', '#D1C7BD'];
 
   const categoryLabels: Record<string, string> = {
     'saving': '銀行儲蓄',
@@ -251,16 +251,16 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                     <AreaChart data={trendData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#EDEDED" stopOpacity={0.1}/>
-                                <stop offset="95%" stopColor="#EDEDED" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#2D2A26" stopOpacity={0.05}/>
+                                <stop offset="95%" stopColor="#2D2A26" stopOpacity={0}/>
                             </linearGradient>
                             <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#E11D48" stopOpacity={0.05}/>
-                                <stop offset="95%" stopColor="#E11D48" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#81A684" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#81A684" stopOpacity={0}/>
                             </linearGradient>
                             <linearGradient id="colorLiabilities" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#059669" stopOpacity={0.05}/>
-                                <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#C47A70" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#C47A70" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
                         <XAxis 
@@ -304,9 +304,9 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                             type="monotone" 
                             dataKey="assets" 
                             name="assets"
-                            stroke="#E11D48" 
-                            strokeWidth={1}
-                            strokeDasharray="3 3"
+                            stroke="#81A684" 
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
                             fillOpacity={1} 
                             fill="url(#colorAssets)" 
                             animationDuration={1500}
@@ -315,9 +315,9 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                             type="monotone" 
                             dataKey="liabilities" 
                             name="liabilities"
-                            stroke="#059669" 
-                            strokeWidth={1}
-                            strokeDasharray="3 3"
+                            stroke="#C47A70" 
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
                             fillOpacity={1} 
                             fill="url(#colorLiabilities)" 
                             animationDuration={1500}
@@ -326,7 +326,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                             type="monotone" 
                             dataKey="netWorth" 
                             name="netWorth"
-                            stroke="#EDEDED" 
+                            stroke="#2D2A26" 
                             strokeWidth={2}
                             fillOpacity={1} 
                             fill="url(#colorNet)" 
@@ -419,26 +419,26 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                         <Area 
                             type="monotone" 
                             dataKey="cost" 
-                            fill="#EDEDED" 
+                            fill="#E8E4DE" 
                             fillOpacity={0.4}
-                            stroke="#D1D1D1" 
+                            stroke="#8E8A83" 
                             strokeWidth={1}
                             strokeDasharray="4 4"
                         />
                         <Line 
                             type="monotone" 
                             dataKey="value" 
-                            stroke="#1A1A1A" 
+                            stroke="#2D2A26" 
                             strokeWidth={2} 
-                            dot={{ r: 2, fill: "#1A1A1A" }}
+                            dot={{ r: 2, fill: "#2D2A26" }}
                             activeDot={{ r: 4 }}
                         />
                         <Bar 
                           dataKey="profit" 
-                          fillOpacity={0.3}
+                          fillOpacity={0.5}
                         >
                           {performanceData.map((entry, index) => (
-                            <Cell key={`profit-cell-${index}`} fill={entry.profit >= 0 ? "#059669" : "#E11D48"} />
+                            <Cell key={`profit-cell-${index}`} fill={entry.profit >= 0 ? "#81A684" : "#C47A70"} />
                           ))}
                         </Bar>
                     </ComposedChart>
