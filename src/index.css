@@ -5,13 +5,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Noto Serif TC", serif;
   
-  --color-wabi-bg: #F7F5F2; /* Soft clay background */
-  --color-wabi-ink: #2D2A26; /* Warm deep charcoal */
-  --color-wabi-stone: #8E8A83; /* Muted warm gray */
+  --color-wabi-bg: #EFECE6; /* Slightly deeper soft warm clay background */
+  --color-wabi-ink: #1F1C18; /* Even deeper, rich warm ink */
+  --color-wabi-stone: #6B665E; /* Deeper warm stone gray (increases readability of metadata) */
   --color-wabi-paper: #FFFFFF; /* Clean white for cards */
-  --color-wabi-accent: #E8E4DE; /* Soft border color */
-  --color-wabi-up: #81A684; /* Muted moss green (Assets) */
-  --color-wabi-down: #C47A70; /* Muted dusty rose (Liabilities) */
+  --color-wabi-accent: #D1C9BE; /* Deeper and warmer border/accent color for more prominent lines */
+  --color-wabi-up: #B23A30; /* Deeper, richer Taiwanese stock Red (漲 / Up / Profit) */
+  --color-wabi-down: #2D6B3F; /* Deeper, richer Taiwanese stock Green (跌 / Down / Liabilities) */
 }
 
 @layer base {

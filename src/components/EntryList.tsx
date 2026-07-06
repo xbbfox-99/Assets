@@ -66,7 +66,7 @@ export const EntryList: React.FC<EntryListProps> = ({ title, items, type, onDele
                   className="bg-wabi-paper p-3 rounded-2xl border border-wabi-accent/5 flex items-center justify-between group cursor-pointer hover:border-wabi-accent/20 transition-all shadow-sm hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-green-50 text-green-600' : type === 'liability' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${type === 'asset' ? 'bg-wabi-up/15 text-wabi-up font-bold' : type === 'liability' ? 'bg-wabi-down/15 text-wabi-down font-bold' : 'bg-wabi-up/15 text-wabi-up font-bold'}`}>
                       {type === 'asset' || type === 'investment' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     </div>
                     <div>

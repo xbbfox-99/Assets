@@ -255,12 +255,12 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                                 <stop offset="95%" stopColor="#2D2A26" stopOpacity={0}/>
                             </linearGradient>
                             <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#81A684" stopOpacity={0.1}/>
-                                <stop offset="95%" stopColor="#81A684" stopOpacity={0}/>
-                            </linearGradient>
-                            <linearGradient id="colorLiabilities" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#C47A70" stopOpacity={0.1}/>
                                 <stop offset="95%" stopColor="#C47A70" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorLiabilities" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#81A684" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#81A684" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
                         <XAxis 
@@ -304,7 +304,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                             type="monotone" 
                             dataKey="assets" 
                             name="assets"
-                            stroke="#81A684" 
+                            stroke="#C47A70" 
                             strokeWidth={1.5}
                             strokeDasharray="4 4"
                             fillOpacity={1} 
@@ -315,7 +315,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                             type="monotone" 
                             dataKey="liabilities" 
                             name="liabilities"
-                            stroke="#C47A70" 
+                            stroke="#81A684" 
                             strokeWidth={1.5}
                             strokeDasharray="4 4"
                             fillOpacity={1} 
@@ -358,7 +358,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                   <p className="text-xl font-serif text-wabi-ink tabular-nums">
                     {formatCurrency(performanceData.length > 0 ? performanceData[performanceData.length - 1].profit : 0)}
                   </p>
-                  <span className={`text-[10px] font-bold ${(performanceData.length > 0 && performanceData[performanceData.length - 1].profit >= 0) ? 'text-wabi-up' : 'text-red-500'}`}>
+                  <span className={`text-[10px] font-bold ${(performanceData.length > 0 && performanceData[performanceData.length - 1].profit >= 0) ? 'text-wabi-up' : 'text-wabi-down'}`}>
                     {performanceData.length > 0 ? (performanceData[performanceData.length - 1].profitPct.toFixed(2) + '%') : '0.00%'}
                   </span>
                 </div>
@@ -405,7 +405,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                                                 </div>
                                                 <div className="pt-1 border-t border-wabi-bg flex items-center justify-between gap-4">
                                                     <span className="text-[10px] font-bold text-wabi-ink uppercase tracking-tighter">累積損益</span>
-                                                    <span className={`text-[10px] font-bold tabular-nums ${data.profit >= 0 ? 'text-wabi-up' : 'text-red-500'}`}>
+                                                    <span className={`text-[10px] font-bold tabular-nums ${data.profit >= 0 ? 'text-wabi-up' : 'text-wabi-down'}`}>
                                                         {formatCurrency(data.profit)} ({data.profitPct.toFixed(2)}%)
                                                     </span>
                                                 </div>
@@ -438,7 +438,7 @@ export const AssetAnalysis: React.FC<AssetAnalysisProps> = ({ assets, liabilitie
                           fillOpacity={0.5}
                         >
                           {performanceData.map((entry, index) => (
-                            <Cell key={`profit-cell-${index}`} fill={entry.profit >= 0 ? "#81A684" : "#C47A70"} />
+                            <Cell key={`profit-cell-${index}`} fill={entry.profit >= 0 ? "#C47A70" : "#81A684"} />
                           ))}
                         </Bar>
                     </ComposedChart>

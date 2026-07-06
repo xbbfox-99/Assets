@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { X, Save, Calculator, Landmark, Plus, ChevronUp, ChevronDown, RefreshCw, TrendingUp, TrendingDown, Trash2, GripVertical } from 'lucide-react';
 import { db, auth, OperationType, handleFirestoreError } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
 import { collection, addDoc, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { INSTITUTIONS, ProjectItem, DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT_INVESTMENTS } from '../constants';
 import { Asset, Liability, Investment } from '../types';
@@ -229,6 +230,7 @@ const BankItem: React.FC<{
 };
 
 export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, isClone }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [institutions, setInstitutions] = useState<any[]>([]);
@@ -276,11 +278,11 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
     };
 
     const fetchTemplatesAndInitial = async () => {
-      if (!auth.currentUser) return;
+      if (!user) return;
       
       let baseInstitutions = [...INSTITUTIONS];
       try {
-        const docSnap = await getDoc(doc(db, `users/${auth.currentUser.uid}/settings`, 'templates'));
+        const docSnap = await getDoc(doc(db, `users/${user.uid}/settings`, 'templates'));
         if (docSnap.exists() && docSnap.data().institutions) {
           const storedInsts = docSnap.data().institutions;
           // Merge missing defaults from constants (e.g. newly added "中鋼持股信託" or new items)
@@ -351,7 +353,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
           });
         }
       } catch (err) {
-        handleFirestoreError(err, OperationType.GET, `users/${auth.currentUser.uid}/settings/templates`);
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}/settings/templates`);
       }
 
       if (initialItems && initialItems.length > 0) {
@@ -469,7 +471,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
     };
 
     fetchTemplatesAndInitial();
-  }, [initialItems]);
+  }, [initialItems, user]);
 
   // Sync state initialization
   useEffect(() => {
@@ -498,17 +500,17 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
   }, [institutions, hasLoadedTemplates]);
 
   const saveTemplates = async (newInsts: any[]) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     try {
       // Firestore does not support undefined values, sanitize the objects
       const sanitizedInsts = JSON.parse(JSON.stringify(newInsts));
       
-      await setDoc(doc(db, `users/${auth.currentUser.uid}/settings`, 'templates'), {
+      await setDoc(doc(db, `users/${user.uid}/settings`, 'templates'), {
         institutions: sanitizedInsts,
         updatedAt: new Date()
       });
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `users/${auth.currentUser.uid}/settings/templates`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/settings/templates`);
     }
   };
 
@@ -764,7 +766,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
   };
 
   const handleSaveAll = async () => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     
     const allItems = institutions.flatMap(inst => inst.items);
     const activeEntries = allItems.filter(item => {
@@ -796,7 +798,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
             else if (['loan', 'card', 'investment_payable'].includes((item as any).category)) path = 'liabilities';
             else path = 'assets';
           }
-          return deleteDoc(doc(db, `users/${auth.currentUser!.uid}/${path}`, item.id));
+          return deleteDoc(doc(db, `users/${user.uid}/${path}`, item.id));
         });
         await Promise.all(deletePromises);
       }
@@ -804,7 +806,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
       const savePromises = activeEntries.map((item) => {
         let collectionPath = '';
         const payload: any = {
-          userId: auth.currentUser!.uid,
+          userId: user.uid,
           name: item.name,
           category: item.category,
           updatedAt: timestamp,
@@ -815,17 +817,17 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
         const itemExchangeRate = Number(exchangeRates[item.id]) || 1;
 
         if (item.type === 'asset') {
-          collectionPath = `users/${auth.currentUser!.uid}/assets`;
+          collectionPath = `users/${user.uid}/assets`;
           payload.amount = Number(amounts[item.id]);
           payload.bank = item.bank || '其他';
           payload.currency = itemCurrency;
           payload.exchangeRate = itemExchangeRate; 
         } else if (item.type === 'liability') {
-          collectionPath = `users/${auth.currentUser!.uid}/liabilities`;
+          collectionPath = `users/${user.uid}/liabilities`;
           payload.amount = Number(amounts[item.id]);
           payload.bank = item.bank || '其他';
         } else if (item.type === 'investment') {
-          collectionPath = `users/${auth.currentUser!.uid}/investments`;
+          collectionPath = `users/${user.uid}/investments`;
           payload.shares = Number(investmentData[item.id].shares);
           payload.marketPrice = Number(investmentData[item.id].price);
           payload.avgCost = Number(investmentData[item.id].cost || 0);
@@ -847,7 +849,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
             else if (item.type === 'liability') path = 'liabilities';
             else path = 'assets';
           }
-          return setDoc(doc(db, `users/${auth.currentUser!.uid}/${path}`, item.id), payload);
+          return setDoc(doc(db, `users/${user.uid}/${path}`, item.id), payload);
         } else {
           return addDoc(collection(db, collectionPath), payload);
         }
