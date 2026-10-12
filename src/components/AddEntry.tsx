@@ -5,6 +5,7 @@ import { db, auth, OperationType, handleFirestoreError } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT_INVESTMENTS } from '../constants';
 import { getExchangeRate } from '../lib/exchangeRate';
+import { getEffectiveSymbol } from '../lib/stockHelper';
 
 interface AddEntryProps {
   onClose: () => void;
@@ -272,20 +273,40 @@ export const AddEntry: React.FC<AddEntryProps> = ({ onClose, type }) => {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] text-wabi-stone uppercase tracking-widest px-1">目前市價 Price ({formData.currency})</label>
-                  {formData.symbol && (
+                  {Boolean(formData.symbol || formData.name) && (
                     <button 
                       type="button"
                       onClick={async () => {
+                        const targetSymbol = getEffectiveSymbol({ name: formData.name, symbol: formData.symbol }) || formData.symbol || formData.name;
+                        if (!targetSymbol) return;
                         try {
-                          const res = await fetch(`/api/prices?symbols=${formData.symbol}`);
+                          const res = await fetch(`/api/prices?symbols=${encodeURIComponent(targetSymbol)}`);
                           if (res.ok) {
                             const data = await res.json();
-                            const match = data.find((d: any) => d.Code.toUpperCase() === formData.symbol.toUpperCase());
-                            if (match) {
-                              setFormData(prev => ({ ...prev, price: match.ClosingPrice.toString() }));
+                            const cleanTarget = targetSymbol.toUpperCase().trim();
+                            const match = data.find((d: any) => 
+                              String(d.Code).toUpperCase() === cleanTarget ||
+                              (d.Name && String(d.Name).trim() === String(formData.name).trim())
+                            );
+                            if (match && match.ClosingPrice) {
+                              const cleanPrice = String(match.ClosingPrice).replace(/,/g, '').trim();
+                              const num = parseFloat(cleanPrice);
+                              if (!isNaN(num) && num > 0) {
+                                setFormData(prev => ({ 
+                                  ...prev, 
+                                  price: num.toString(),
+                                  symbol: prev.symbol || (match.Code && !isNaN(Number(match.Code)) ? match.Code : prev.symbol)
+                                }));
+                                alert(`已成功抓取市價：$${num}`);
+                                return;
+                              }
                             }
+                            alert('查無此股票市價，請確認代號或名稱是否正確。');
                           }
-                        } catch (e) { console.error(e); }
+                        } catch (e) {
+                          console.error(e);
+                          alert('抓取市價失敗，請檢查網路連線。');
+                        }
                       }}
                       className="text-[8px] text-blue-600 font-bold flex items-center gap-1 hover:underline"
                     >

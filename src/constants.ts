@@ -65,7 +65,7 @@ export const INSTITUTIONS = [
     id: 'inst-invest',
     name: '股票與投資',
     items: [
-      { id: 'i2', name: '凱基台灣TOP50', category: 'stock', type: 'investment', symbol: '00551L', bank: '股票與投資' },
+      { id: 'i2', name: '凱基台灣TOP50', category: 'stock', type: 'investment', symbol: '009816', bank: '股票與投資' },
       { id: 'i3', name: '中鴻', category: 'stock', type: 'investment', symbol: '2014', bank: '股票與投資' },
       { id: 'i4', name: '台達電', category: 'stock', type: 'investment', symbol: '2308', bank: '股票與投資' },
       { id: 'i5', name: '聯發科', category: 'stock', type: 'investment', symbol: '2454', bank: '股票與投資' },

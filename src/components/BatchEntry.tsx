@@ -7,6 +7,7 @@ import { collection, addDoc, doc, setDoc, getDoc, deleteDoc } from 'firebase/fir
 import { INSTITUTIONS, ProjectItem, DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT_INVESTMENTS } from '../constants';
 import { Asset, Liability, Investment } from '../types';
 import { getExchangeRate } from '../lib/exchangeRate';
+import { getEffectiveSymbol } from '../lib/stockHelper';
 
 interface BatchEntryProps {
   onClose: () => void;
@@ -105,7 +106,7 @@ const BankItem: React.FC<{
             <p className="text-sm font-semibold text-wabi-ink truncate max-w-[160px] sm:max-w-[200px]">{item.name}</p>
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-1.5 py-0.5 text-[8px] font-mono font-medium tracking-wide bg-wabi-accent/60 text-wabi-stone rounded border border-wabi-accent/20 uppercase">
-                {item.symbol || (
+                {(item.type === 'investment' ? (item.symbol || getEffectiveSymbol(item) || '股票') : item.symbol) || (
                   item.category === 'saving' ? '資產' : 
                   item.category === 'foreign' ? '外幣資產' : 
                   item.category === 'card' ? '卡費' : 
@@ -177,7 +178,17 @@ const BankItem: React.FC<{
                       placeholder="0"
                       value={investmentData[item.id]?.price || ''}
                       onChange={e => handleInvestmentChange(item.id, 'price', e.target.value)}
-                      className={`w-full bg-transparent text-right font-serif text-xs outline-none transition-colors tabular-nums ${item.symbol && marketPrices[item.symbol] ? 'text-wabi-up font-bold' : 'text-wabi-ink'}`}
+                      className={`w-full bg-transparent text-right font-serif text-xs outline-none transition-colors tabular-nums ${
+                        (() => {
+                          const eff = getEffectiveSymbol(item);
+                          const isLive = Boolean(
+                            (item.symbol && marketPrices[item.symbol.toUpperCase()]) ||
+                            (eff && marketPrices[eff.toUpperCase()]) ||
+                            (item.name && marketPrices[item.name.trim()])
+                          );
+                          return isLive ? 'text-wabi-up font-bold' : 'text-wabi-ink';
+                        })()
+                      }`}
                     />
                   </div>
                 </div>
@@ -305,6 +316,16 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
               if (!i.id || existingIds.has(i.id)) return false;
               existingIds.add(i.id);
               return true;
+            }).map((i: any) => {
+              // Normalize legacy 00551L typo to 009816
+              if (i.name === '凱基台灣TOP50' && (i.symbol === '00551L' || !i.symbol)) {
+                return { ...i, symbol: '009816' };
+              }
+              if (i.type === 'investment' && !i.symbol) {
+                const eff = getEffectiveSymbol(i);
+                if (eff) return { ...i, symbol: eff };
+              }
+              return i;
             });
             sInst.items = uniqueExistingItems;
 
@@ -517,39 +538,93 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
   const fetchPrices = async () => {
     setIsFetching(true);
     try {
-      const symbols = Array.from(new Set(
-        institutions.flatMap(inst => 
-          inst.items.filter(item => item.type === 'investment' && item.symbol)
-          .map(item => item.symbol!)
-        )
-      )).join(',');
-
-      const response = await fetch(`/api/prices?symbols=${encodeURIComponent(symbols)}`);
-      const data = await response.json();
-      const priceMap: Record<string, number> = {};
-      data.forEach((item: any) => {
-        priceMap[item.Code] = parseFloat(item.ClosingPrice);
-      });
-      setMarketPrices(prev => ({ ...prev, ...priceMap }));
-      
-      const newInvestData = { ...investmentData };
+      // 1. Collect all investment symbols, aliases and names
+      const queryList: string[] = [];
       institutions.forEach(inst => {
         inst.items.forEach(item => {
-          if (item.type === 'investment' && item.symbol && priceMap[item.symbol]) {
-            newInvestData[item.id] = {
-              ...newInvestData[item.id],
-              price: priceMap[item.symbol].toString()
-            };
+          if (item.type === 'investment') {
+            const eff = getEffectiveSymbol(item);
+            if (eff) queryList.push(eff);
+            if (item.symbol) queryList.push(item.symbol.trim());
+            if (item.name) queryList.push(item.name.trim());
           }
         });
       });
+
+      const symbols = Array.from(new Set(queryList.filter(Boolean))).join(',');
+
+      const response = await fetch(`/api/prices?symbols=${encodeURIComponent(symbols)}`);
+      if (!response.ok) {
+        throw new Error(`伺服器回應異常 (${response.status})`);
+      }
+      const data = await response.json();
+      
+      const priceMap: Record<string, number> = {};
+      data.forEach((item: any) => {
+        if (!item.ClosingPrice) return;
+        const cleanPrice = String(item.ClosingPrice).replace(/,/g, '').trim();
+        const p = parseFloat(cleanPrice);
+        if (!isNaN(p) && p > 0) {
+          if (item.Code) {
+            const upper = String(item.Code).toUpperCase().trim();
+            priceMap[upper] = p;
+            if (upper.includes('.')) {
+              priceMap[upper.split('.')[0]] = p;
+            }
+          }
+          if (item.Name) {
+            priceMap[String(item.Name).trim()] = p;
+          }
+        }
+      });
+
+      // Handle 00551L / 009816 alias linkage
+      if (priceMap['009816']) priceMap['00551L'] = priceMap['009816'];
+      if (priceMap['00551L']) priceMap['009816'] = priceMap['00551L'];
+
+      setMarketPrices(prev => ({ ...prev, ...priceMap }));
+      
+      let updatedCount = 0;
+      const unmatchedItems: string[] = [];
+      const newInvestData = { ...investmentData };
+
+      institutions.forEach(inst => {
+        inst.items.forEach(item => {
+          if (item.type === 'investment') {
+            const eff = getEffectiveSymbol(item);
+            const matchedPrice = 
+              (eff && priceMap[eff.toUpperCase()]) ??
+              (item.symbol && priceMap[item.symbol.toUpperCase().trim()]) ??
+              (item.name && priceMap[item.name.trim()]);
+
+            if (matchedPrice != null && matchedPrice > 0) {
+              newInvestData[item.id] = {
+                ...newInvestData[item.id],
+                price: matchedPrice.toString()
+              };
+              updatedCount++;
+            } else {
+              unmatchedItems.push(item.name || item.symbol || '未命名標的');
+            }
+          }
+        });
+      });
+
       setInvestmentData(newInvestData);
+
+      // User feedback
+      if (updatedCount > 0) {
+        if (unmatchedItems.length > 0) {
+          alert(`已成功更新 ${updatedCount} 筆股票最新市價！\n（查無代號：${unmatchedItems.join(', ')}，請確認代號是否正確）`);
+        } else {
+          alert(`已成功同步所有投資標的 (${updatedCount} 筆) 之最新市價！`);
+        }
+      } else {
+        alert('未能抓取到股票市價，請確認是否有填寫正確的股票代號（例如：2330、0050、AAPL 等）。');
+      }
     } catch (err: any) {
       console.error('Fetch error:', err);
-      // More informative alert for the user if it's a network error
-      if (err instanceof Error && err.message === 'Failed to fetch') {
-        alert('網路連線或是伺服器暫時無法回應，請稍後再試。 (Network/Fetch Error)');
-      }
+      alert('更新市價時發生連線或伺服器異常，請稍後再試。');
     } finally {
       setIsFetching(false);
     }

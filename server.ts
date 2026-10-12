@@ -16,8 +16,46 @@ async function startServer() {
 
   // API Route to proxy market data and bypass CORS
   app.get("/api/prices", async (req, res) => {
-    const symbolsQuery = req.query.symbols as string || "";
-    const requestedSymbols = symbolsQuery.split(',').filter(Boolean).map(s => s.trim().toUpperCase());
+    const symbolsQuery = (req.query.symbols as string) || "";
+    const rawSymbols = symbolsQuery.split(',').filter(Boolean).map(s => s.trim());
+
+    // Well-known alias mapping to standard codes
+    const ALIAS_MAP: Record<string, string> = {
+      '00551L': '009816', // 凱基台灣TOP50
+      '凱基台灣TOP50': '009816',
+      '台積電': '2330',
+      '中鋼': '2002',
+      '中鋼持股信託': '2002',
+      '公提金': '2002',
+      '中鴻': '2014',
+      '台達電': '2308',
+      '聯發科': '2454',
+      '鴻海': '2317',
+      '元大台灣50': '0050',
+      '台灣50': '0050',
+      '元大高股息': '0056',
+      '國泰永續高股息': '00878',
+      '富邦台50': '006208',
+      '元太': '8069',
+      '環球晶': '6488',
+      '中美晶': '5483',
+      '鈊象': '3293',
+      '比特幣': 'BTC',
+      '以太幣': 'ETH',
+      'GOOGLE': 'GOOGL',
+      '谷歌': 'GOOGL',
+      '蘋果': 'AAPL',
+      '微軟': 'MSFT',
+      '輝達': 'NVDA',
+      '特斯拉': 'TSLA',
+    };
+
+    const requestedSymbols = Array.from(new Set(rawSymbols.flatMap(raw => {
+      const upper = raw.toUpperCase().trim();
+      const cleaned = upper.replace(/\.(TW|TWO)$/i, '');
+      const mapped = ALIAS_MAP[raw] || ALIAS_MAP[upper] || ALIAS_MAP[cleaned];
+      return [upper, cleaned, mapped].filter(Boolean) as string[];
+    })));
 
     try {
       const resultData: any[] = [];
@@ -30,7 +68,7 @@ async function startServer() {
       if (!twseCache || (now - lastTwseFetch > CACHE_DURATION)) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+          const timeout = setTimeout(() => controller.abort(), 6000); // 6s timeout
           const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', { 
             signal: controller.signal,
             headers: commonHeaders
@@ -45,14 +83,25 @@ async function startServer() {
         }
       }
       
-      if (twseCache) {
+      if (twseCache && Array.isArray(twseCache)) {
         resultData.push(...twseCache);
+
+        // Also index by Name and handle aliases for convenience
+        twseCache.forEach((item: any) => {
+          if (item.Name && item.ClosingPrice) {
+            resultData.push({ Code: item.Name.trim(), ClosingPrice: item.ClosingPrice });
+          }
+          if (item.Code === '009816') {
+            resultData.push({ Code: '00551L', ClosingPrice: item.ClosingPrice });
+            resultData.push({ Code: '凱基台灣TOP50', ClosingPrice: item.ClosingPrice });
+          }
+        });
       }
 
-      // 2. Fetch Bitcoin (BTC)
+      // 2. Fetch Bitcoin (BTC) & Crypto
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+        const timeout = setTimeout(() => controller.abort(), 3000);
         const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', { 
           signal: controller.signal,
           headers: commonHeaders 
@@ -64,46 +113,64 @@ async function startServer() {
           resultData.push({ Code: 'BTC', ClosingPrice: btcPrice });
           resultData.push({ Code: 'BTC-USD', ClosingPrice: btcPrice });
           resultData.push({ Code: 'BITCOIN', ClosingPrice: btcPrice });
+          resultData.push({ Code: '比特幣', ClosingPrice: btcPrice });
         }
       } catch (err) {
         console.error('BTC fetch error:', err);
       }
 
-      // 3. Fetch US Stocks or specific symbols that aren't in TWSE
-      const usSymbols = requestedSymbols.filter(s => 
-        !resultData.find(t => t.Code === s) && 
-        !['BTC', 'BTC-USD', 'BITCOIN'].includes(s)
+      // 3. Fetch US Stocks, OTC/TPEx stocks, or anything missing from TWSE via Yahoo Finance
+      const foundCodes = new Set(resultData.map(t => String(t.Code).toUpperCase()));
+      const missingSymbols = requestedSymbols.filter(s => 
+        !foundCodes.has(s.toUpperCase()) && 
+        !['BTC', 'BTC-USD', 'BITCOIN', '比特幣'].includes(s.toUpperCase())
       );
 
-      const commonUS = ['GOOGL', 'AAPL', 'MSFT', 'TSLA', 'AMZN', 'NVDA', '2002'];
-      const toFetch = Array.from(new Set([...usSymbols, ...commonUS.filter(s => requestedSymbols.includes(s) || !requestedSymbols.length)]));
+      const commonDefaults = ['GOOGL', 'AAPL', 'MSFT', 'TSLA', 'AMZN', 'NVDA', '2002', '009816'];
+      const toFetch = Array.from(new Set([...missingSymbols, ...commonDefaults.filter(s => requestedSymbols.includes(s) || !requestedSymbols.length)]));
+      const limitedFetches = toFetch.slice(0, 20);
 
-      const limitedFetches = toFetch.slice(0, 15);
+      const yahooPromises = limitedFetches.map(async (sym) => {
+        const clean = sym.trim().toUpperCase();
+        // Generate potential candidates for Yahoo Finance
+        const candidates = [clean];
+        if (/^\d{4,6}[A-Z]?$/.test(clean)) {
+          candidates.push(`${clean}.TW`, `${clean}.TWO`);
+        } else if (!clean.includes('.')) {
+          candidates.push(`${clean}-USD`);
+        }
 
-      const usPromises = limitedFetches.map(async (s) => {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
-          const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`, { 
-            signal: controller.signal,
-            headers: commonHeaders 
-          });
-          clearTimeout(timeout);
-          if (response.ok) {
-            const chart: any = await response.json();
-            const price = chart.chart.result?.[0]?.meta?.regularMarketPrice;
-            if (price) {
-              return { Code: s, ClosingPrice: price.toString() };
+        for (const candidate of candidates) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(candidate)}?interval=1d`, { 
+              signal: controller.signal,
+              headers: commonHeaders 
+            });
+            clearTimeout(timeout);
+            if (response.ok) {
+              const chart: any = await response.json();
+              const price = chart.chart?.result?.[0]?.meta?.regularMarketPrice;
+              if (price != null && !isNaN(price)) {
+                const priceStr = price.toString();
+                const matchedResults = [{ Code: clean, ClosingPrice: priceStr }];
+                if (clean === '009816') {
+                  matchedResults.push({ Code: '00551L', ClosingPrice: priceStr });
+                  matchedResults.push({ Code: '凱基台灣TOP50', ClosingPrice: priceStr });
+                }
+                return matchedResults;
+              }
             }
+          } catch (e) {
+            // Continue to next candidate
           }
-        } catch (e) {
-          return null;
         }
         return null;
       });
 
-      const usResults = (await Promise.all(usPromises)).filter(Boolean);
-      res.json([...resultData, ...usResults]);
+      const yahooResults = (await Promise.all(yahooPromises)).filter(Boolean).flat() as any[];
+      res.json([...resultData, ...yahooResults]);
     } catch (error) {
       console.error('Proxy error:', error);
       res.status(500).json({ error: 'Failed to fetch market data' });
