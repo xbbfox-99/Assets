@@ -8,6 +8,7 @@ import { INSTITUTIONS, ProjectItem, DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT
 import { Asset, Liability, Investment } from '../types';
 import { getExchangeRate } from '../lib/exchangeRate';
 import { getEffectiveSymbol } from '../lib/stockHelper';
+import { useToast } from '../lib/ToastContext';
 
 interface BatchEntryProps {
   onClose: () => void;
@@ -242,6 +243,7 @@ const BankItem: React.FC<{
 
 export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, isClone }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [institutions, setInstitutions] = useState<any[]>([]);
@@ -615,16 +617,25 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
       // User feedback
       if (updatedCount > 0) {
         if (unmatchedItems.length > 0) {
-          alert(`已成功更新 ${updatedCount} 筆股票最新市價！\n（查無代號：${unmatchedItems.join(', ')}，請確認代號是否正確）`);
+          toast.warning(
+            `已成功更新 ${updatedCount} 筆股票市價`,
+            `提示：部分標的查無市價（${unmatchedItems.join(', ')}），請確認代號是否填寫。`
+          );
         } else {
-          alert(`已成功同步所有投資標的 (${updatedCount} 筆) 之最新市價！`);
+          toast.success(
+            `市價同步完成`,
+            `已成功同步所有投資標的 (${updatedCount} 筆) 之最新即時市價！`
+          );
         }
       } else {
-        alert('未能抓取到股票市價，請確認是否有填寫正確的股票代號（例如：2330、0050、AAPL 等）。');
+        toast.warning(
+          `未能抓取到股票市價`,
+          `請確認投資標的是否填寫正確股票代號（例如：2330、0050、AAPL、009816 等）。`
+        );
       }
     } catch (err: any) {
       console.error('Fetch error:', err);
-      alert('更新市價時發生連線或伺服器異常，請稍後再試。');
+      toast.error('市價更新異常', '伺服器連線發生暫時性問題，已保留目前數值，請稍後再試。');
     } finally {
       setIsFetching(false);
     }
@@ -853,7 +864,7 @@ export const BatchEntry: React.FC<BatchEntryProps> = ({ onClose, initialItems, i
     });
 
     if (activeEntries.length === 0) {
-      alert('請至少輸入一項有效金額');
+      toast.warning('請輸入金額', '請至少輸入一項有效金額');
       return;
     }
 

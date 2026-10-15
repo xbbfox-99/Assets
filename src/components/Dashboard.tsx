@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Asset, Liability, Investment, Reminder } from '../types';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Wallet, Clock, Check, Square } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Check, Square } from 'lucide-react';
 
 interface DashboardProps {
   assets: Asset[];
@@ -90,7 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <p className="text-[10px] text-wabi-stone uppercase tracking-[0.2em]">Current Balance</p>
@@ -109,17 +109,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           <h2 className="text-2xl font-serif text-wabi-ink">財務概覽</h2>
         </div>
         
-        <button 
-          onClick={() => setIncludeCSC(!includeCSC)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
-            includeCSC 
-              ? 'bg-wabi-accent/40 border-wabi-accent text-wabi-ink font-semibold' 
-              : 'bg-wabi-paper border-wabi-accent/60 text-wabi-stone hover:border-wabi-accent'
-          }`}
-        >
-          <span className="text-[10px] font-medium tracking-wider">計入中鋼信託</span>
-          {includeCSC ? <Check size={12} strokeWidth={3} /> : <Square size={12} strokeWidth={2} />}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button 
+            type="button"
+            onClick={() => setIncludeCSC(!includeCSC)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+              includeCSC 
+                ? 'bg-wabi-accent/40 border-wabi-accent text-wabi-ink font-semibold' 
+                : 'bg-wabi-paper border-wabi-accent/60 text-wabi-stone hover:border-wabi-accent'
+            }`}
+          >
+            <span className="text-[10px] font-medium tracking-wider">計入中鋼信託</span>
+            {includeCSC ? <Check size={12} strokeWidth={3} /> : <Square size={12} strokeWidth={2} />}
+          </button>
+        </div>
       </div>
 
       {/* Main Net Worth Card */}
@@ -156,6 +159,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, liabilities, inves
           </div>
         </div>
       </motion.div>
+
 
       {/* Insights Section */}
       <div className="space-y-3">

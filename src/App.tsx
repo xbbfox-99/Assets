@@ -20,11 +20,13 @@ import { doc, deleteDoc } from 'firebase/firestore';
 
 import { BatchHistoryList } from './components/BatchHistoryList';
 import { Asset, Liability, Investment } from './types';
+import { useToast } from './lib/ToastContext';
 
 import { seedDemoData } from './lib/seed';
 
 function AppContent() {
   const { user } = useAuth();
+  const { toast, confirm } = useToast();
   const { assets, liabilities, investments, reminders, loading } = useData();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAdd, setShowAdd] = useState(false);
@@ -41,8 +43,10 @@ function AppContent() {
     setIsSeeding(true);
     try {
       await seedDemoData(user.uid);
+      toast.success('已匯入範例資料');
     } catch (err) {
       console.error(err);
+      toast.error('範例資料匯入失敗');
     } finally {
       setIsSeeding(false);
     }
@@ -57,11 +61,25 @@ function AppContent() {
   if (!user) return <Login />;
 
   const handleDelete = async (id: string, path: string, skipConfirm = false) => {
-    if (!skipConfirm && !window.confirm('確定要刪除此項目嗎？')) return;
-    try {
-      await deleteDoc(doc(db, `users/${user.uid}/${path}`, id));
-    } catch (err) {
-      console.error(err);
+    const doDelete = async () => {
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/${path}`, id));
+        toast.success('已刪除該筆項目');
+      } catch (err) {
+        console.error(err);
+        toast.error('刪除失敗', '請確認權限或稍後再試');
+      }
+    };
+
+    if (skipConfirm) {
+      await doDelete();
+    } else {
+      confirm({
+        title: '確定刪除此項目？',
+        message: '此項目移除後將自記錄中排除，確定要刪除嗎？',
+        confirmLabel: '刪除',
+        onConfirm: doDelete,
+      });
     }
   };
 
@@ -73,20 +91,16 @@ function AppContent() {
     const timestamp = firstItem.updatedAt;
     const targetTime = timestamp.toDate ? timestamp.toDate().getTime() : new Date(timestamp).getTime();
 
-    // Remove window.confirm as it is already handled by the UI internal state
-
     try {
       setIsDeleting(true);
       
       // Find ALL items in all three collections that match this exact timestamp
-      // We use a small epsilon or exact match if possible
       const allBatchItemsToClean = [
         ...assets,
         ...liabilities,
         ...investments
       ].filter(item => {
         const itemTs = item.updatedAt.toDate ? item.updatedAt.toDate().getTime() : new Date(item.updatedAt).getTime();
-        // Allow a 10ms difference just in case of slight precision issues, though they should be identical
         return Math.abs(itemTs - targetTime) < 10;
       });
 
@@ -101,9 +115,10 @@ function AppContent() {
       });
 
       await Promise.all(deletePromises);
+      toast.success('已刪除批次紀錄', '該期結算之所有明細已同步清除。');
     } catch (err) {
       console.error('Delete Batch Error:', err);
-      alert('刪除失敗');
+      toast.error('刪除失敗', '批次資料刪除時發生異常，請稍後再試。');
     } finally {
       setIsDeleting(false);
     }

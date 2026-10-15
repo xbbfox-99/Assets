@@ -6,6 +6,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { DEFAULT_ASSETS, DEFAULT_LIABILITIES, DEFAULT_INVESTMENTS } from '../constants';
 import { getExchangeRate } from '../lib/exchangeRate';
 import { getEffectiveSymbol } from '../lib/stockHelper';
+import { useToast } from '../lib/ToastContext';
 
 interface AddEntryProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface AddEntryProps {
 }
 
 export const AddEntry: React.FC<AddEntryProps> = ({ onClose, type }) => {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
   const getTemplates = () => {
@@ -297,15 +299,15 @@ export const AddEntry: React.FC<AddEntryProps> = ({ onClose, type }) => {
                                   price: num.toString(),
                                   symbol: prev.symbol || (match.Code && !isNaN(Number(match.Code)) ? match.Code : prev.symbol)
                                 }));
-                                alert(`已成功抓取市價：$${num}`);
+                                toast.success('市價抓取成功', `已成功抓取最新市價：$${num}`);
                                 return;
                               }
                             }
-                            alert('查無此股票市價，請確認代號或名稱是否正確。');
+                            toast.warning('查無市價', '查無此股票市價，請確認代號或名稱是否正確。');
                           }
                         } catch (e) {
                           console.error(e);
-                          alert('抓取市價失敗，請檢查網路連線。');
+                          toast.error('連線異常', '抓取市價失敗，請檢查網路連線。');
                         }
                       }}
                       className="text-[8px] text-blue-600 font-bold flex items-center gap-1 hover:underline"

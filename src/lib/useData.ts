@@ -29,24 +29,37 @@ export function useData() {
     const investmentQuery = query(collection(db, `users/${user.uid}/investments`), orderBy('updatedAt', 'desc'));
     const reminderQuery = query(collection(db, `users/${user.uid}/reminders`));
 
+    const handleError = (err: any, path: string) => {
+      console.warn(`Firestore snapshot warning on ${path}:`, err?.message || err);
+      // Do not crash the entire app if the client is temporarily offline or reconnecting
+      if (err?.code === 'unavailable' || String(err?.message || '').includes('offline')) {
+        return;
+      }
+      try {
+        handleFirestoreError(err, OperationType.LIST, path);
+      } catch (e) {
+        console.error('Handled snapshot error:', e);
+      }
+    };
+
     const unsubAssets = onSnapshot(assetQuery, (snapshot) => {
       setAssets(snapshot.docs.map(doc => ({ id: doc.id, _collection: 'assets', ...doc.data() } as any)));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/assets`));
+    }, (err) => handleError(err, `users/${user.uid}/assets`));
 
     const unsubLiabilities = onSnapshot(liabilityQuery, (snapshot) => {
       setLiabilities(snapshot.docs.map(doc => ({ id: doc.id, _collection: 'liabilities', ...doc.data() } as any)));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/liabilities`));
+    }, (err) => handleError(err, `users/${user.uid}/liabilities`));
 
     const unsubInvestments = onSnapshot(investmentQuery, (snapshot) => {
       setInvestments(snapshot.docs.map(doc => ({ id: doc.id, _collection: 'investments', ...doc.data() } as any)));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/investments`));
+    }, (err) => handleError(err, `users/${user.uid}/investments`));
 
     const unsubReminders = onSnapshot(reminderQuery, (snapshot) => {
       const sortedReminders = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Reminder))
         .sort((a, b) => Number(a.day || 0) - Number(b.day || 0));
       setReminders(sortedReminders);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/reminders`));
+    }, (err) => handleError(err, `users/${user.uid}/reminders`));
 
     setLoading(false);
 
